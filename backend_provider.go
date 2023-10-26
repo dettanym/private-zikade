@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"github.com/plprobelab/zikade/pb"
 	"io"
 	"strings"
 	"sync"
