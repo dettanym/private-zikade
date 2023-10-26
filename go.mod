@@ -1,4 +1,4 @@
-module github.com/plprobelab/zikade
+module github.com/dettanym/private-zikade
 
 go 1.20
 
@@ -8,7 +8,6 @@ require (
 	github.com/ipfs/boxo v0.12.0
 	github.com/ipfs/go-cid v0.4.1
 	github.com/ipfs/go-datastore v0.6.1-0.20230901172804-1caa2449ed7c
-	github.com/ipfs/go-ds-leveldb v0.5.0
 	github.com/ipfs/go-log/v2 v2.5.1
 	github.com/libp2p/go-libp2p v0.30.0
 	github.com/libp2p/go-libp2p-kbucket v0.5.0
@@ -30,6 +29,11 @@ require (
 	go.uber.org/zap/exp v0.1.0 // cannot update to v0.2.0 because zapslog requires go1.21
 	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63
 	google.golang.org/protobuf v1.31.0
+)
+
+require (
+	github.com/dettanym/go-ds-leveldb v0.0.0-20230930021941-caec7a2eae31
+	github.com/plprobelab/zikade v0.0.0-unpublished
 )
 
 require (
@@ -90,7 +94,7 @@ require (
 	github.com/multiformats/go-multicodec v0.9.0 // indirect
 	github.com/multiformats/go-multistream v0.4.1 // indirect
 	github.com/multiformats/go-varint v0.0.7 // indirect
-	github.com/nxadm/tail v1.4.8 // indirect
+	github.com/nxadm/tail v1.4.11 // indirect
 	github.com/onsi/ginkgo/v2 v2.11.0 // indirect
 	github.com/opencontainers/runtime-spec v1.1.0 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
@@ -122,7 +126,11 @@ require (
 	golang.org/x/tools v0.12.1-0.20230815132531-74c255bcf846 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230711160842-782d3b101e98 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230711160842-782d3b101e98 // indirect
-	google.golang.org/grpc v1.58.0 // indirect
+	google.golang.org/grpc v1.58.3 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/blake3 v1.2.1 // indirect
 )
+
+replace github.com/plprobelab/zikade v0.0.0-unpublished => ./
+
+//replace github.com/ipfs/go-ds-leveldb v0.5.0 => github.com/dettanym/go-ds-leveldb v0.0.0-20230930021941-caec7a2eae31
