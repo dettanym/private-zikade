@@ -35,7 +35,8 @@ type router struct {
 	// tele holds a reference to a telemetry struct
 	tele *Telemetry
 
-	clk clock.Clock
+	clk    clock.Clock
+	tracer trace.Tracer
 }
 
 var _ coordt.Router[kadt.Key, kadt.PeerID, *pb.Message] = (*router)(nil)
