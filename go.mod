@@ -1,8 +1,6 @@
 module github.com/dettanym/private-zikade
 
-go 1.21
-
-toolchain go1.21.1
+go 1.20
 
 require (
 	github.com/benbjohnson/clock v1.3.5
@@ -138,4 +136,4 @@ require (
 replace github.com/plprobelab/zikade v0.0.0-unpublished => ./
 
 //replace github.com/ipfs/go-ds-leveldb v0.5.0 => github.com/dettanym/go-ds-leveldb v0.0.0-20230930021941-caec7a2eae31
-replace github.com/plprobelab/go-libdht/kad/triert => github.com/dettanym/private-go-libdht/kad/triert v0.0.0-20231018152749-8fc677eab46a
+// replace github.com/plprobelab/go-libdht/kad/triert => github.com/dettanym/private-go-libdht/kad/triert v0.0.0-20231018152749-8fc677eab46a
