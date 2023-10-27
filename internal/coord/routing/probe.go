@@ -29,6 +29,11 @@ type RoutingTableCpl[K kad.Key[K], N kad.NodeID[K]] interface {
 	CplSize(cpl int) int
 }
 
+type RoutingTableCplNormalized[K kad.Key[K], N kad.NodeID[K]] interface {
+	RoutingTableCpl[K, N]
+	NormalizeRT(id K) [][]N
+}
+
 // The Probe state machine performs regular connectivity checks for nodes in a routing table.
 //
 // The state machine is notified of a new entry in the routing table via the [EventProbeAdd] event. This adds the node

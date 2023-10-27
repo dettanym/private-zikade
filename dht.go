@@ -40,7 +40,7 @@ type DHT struct {
 
 	// rt holds a reference to the routing table implementation. This can be
 	// configured via the Config struct.
-	rt routing.RoutingTableCpl[kadt.Key, kadt.PeerID]
+	rt routing.RoutingTableCplNormalized[kadt.Key, kadt.PeerID]
 
 	// backends
 	backends map[string]Backend
@@ -83,8 +83,8 @@ func New(h host.Host, cfg *Config) (*DHT, error) {
 	// Use the configured routing table if it was provided
 	if cfg.RoutingTable != nil {
 		d.rt = cfg.RoutingTable
-	} else if d.rt, err = DefaultRoutingTable(nid); err != nil {
-		return nil, fmt.Errorf("new trie routing table: %w", err)
+	} else if d.rt, err = DefaultRoutingTable(nid, cfg.BucketSize); err != nil {
+		return nil, fmt.Errorf("new normalized routing table: %w", err)
 	}
 
 	// initialize a new telemetry struct
