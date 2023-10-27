@@ -7,13 +7,13 @@ import (
 
 	"github.com/benbjohnson/clock"
 	leveldb "github.com/dettanym/go-ds-leveldb"
+	"github.com/dettanym/private-go-kademlia/routing/normalizedrt"
 	ds "github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
-	"github.com/plprobelab/go-libdht/kad/triert"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
@@ -134,7 +134,7 @@ type Config struct {
 	// [triert.TrieRT] routing table will be used. This field will be nil
 	// in the default configuration because a routing table requires information
 	// about the local node.
-	RoutingTable kadt.RoutingTable
+	RoutingTable routing.RoutingTableCplNormalized[kadt.Key, kadt.PeerID] //kadt.RoutingTable
 
 	// The Backends field holds a map of key namespaces to their corresponding
 	// backend implementation. For example, if we received an IPNS record, the
@@ -213,12 +213,8 @@ func DefaultConfig() *Config {
 // DefaultRoutingTable returns a triert.TrieRT routing table. This routing table
 // cannot be initialized in [DefaultConfig] because it requires information
 // about the local peer.
-func DefaultRoutingTable(nodeID kadt.PeerID) (routing.RoutingTableCpl[kadt.Key, kadt.PeerID], error) {
-	rtCfg := triert.DefaultConfig[kadt.Key, kadt.PeerID]()
-	rt, err := triert.New[kadt.Key, kadt.PeerID](nodeID, rtCfg)
-	if err != nil {
-		return nil, fmt.Errorf("new trie routing table: %w", err)
-	}
+func DefaultRoutingTable(nodeID kadt.PeerID, bucketSize int) (routing.RoutingTableCplNormalized[kadt.Key, kadt.PeerID], error) {
+	rt := normalizedrt.New[kadt.Key, kadt.PeerID](nodeID, bucketSize)
 	return rt, nil
 }
 
