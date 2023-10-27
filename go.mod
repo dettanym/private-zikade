@@ -1,6 +1,8 @@
 module github.com/dettanym/private-zikade
 
-go 1.20
+go 1.21
+
+toolchain go1.21.1
 
 require (
 	github.com/benbjohnson/clock v1.3.5
@@ -33,6 +35,7 @@ require (
 
 require (
 	github.com/dettanym/go-ds-leveldb v0.0.0-20230930021941-caec7a2eae31
+	github.com/dettanym/private-go-kademlia v0.0.0-20231026234727-ee167ea4bb18
 	github.com/plprobelab/zikade v0.0.0-unpublished
 )
 
@@ -45,11 +48,11 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/davidlazar/go-crypto v0.0.0-20200604182044-b73af7476f6c // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
-	github.com/dettanym/private-go-kademlia v0.0.0-20231026234727-ee167ea4bb18 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/elastic/gosigar v0.14.2 // indirect
 	github.com/flynn/noise v1.0.0 // indirect
 	github.com/francoispqt/gojay v1.2.13 // indirect
+	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-logr/logr v1.2.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 // indirect
@@ -95,11 +98,11 @@ require (
 	github.com/multiformats/go-multicodec v0.9.0 // indirect
 	github.com/multiformats/go-multistream v0.4.1 // indirect
 	github.com/multiformats/go-varint v0.0.7 // indirect
-	github.com/nxadm/tail v1.4.11 // indirect
 	github.com/onsi/ginkgo/v2 v2.11.0 // indirect
 	github.com/opencontainers/runtime-spec v1.1.0 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58 // indirect
+	github.com/plprobelab/go-kademlia v0.0.0-20230914085641-54e0b94d02bd // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/polydawn/refmt v0.89.0 // indirect
 	github.com/prometheus/client_model v0.4.0 // indirect
@@ -135,3 +138,4 @@ require (
 replace github.com/plprobelab/zikade v0.0.0-unpublished => ./
 
 //replace github.com/ipfs/go-ds-leveldb v0.5.0 => github.com/dettanym/go-ds-leveldb v0.0.0-20230930021941-caec7a2eae31
+replace github.com/plprobelab/go-libdht/kad/triert => github.com/dettanym/private-go-libdht/kad/triert v0.0.0-20231018152749-8fc677eab46a
