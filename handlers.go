@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-
 	ds "github.com/ipfs/go-datastore"
 	record "github.com/libp2p/go-libp2p-record"
 	recpb "github.com/libp2p/go-libp2p-record/pb"
@@ -13,6 +12,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	otel "go.opentelemetry.io/otel/trace"
 	"golang.org/x/exp/slog"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/plprobelab/zikade/kadt"
 	"github.com/plprobelab/zikade/pb"
@@ -290,7 +290,10 @@ func (d *DHT) handlePrivateFindPeer(ctx context.Context, remote peer.ID, msg *pb
 		return nil, fmt.Errorf("no PIR Request sent in the message")
 	}
 
-	bucketsWithAddrInfos := d.normalizeRTJoinedWithPeerStore(kadt.PeerID(remote).Key())
+	bucketsWithAddrInfos, err := d.normalizeRTJoinedWithPeerStore(kadt.PeerID(remote).Key())
+	if err != nil {
+		return nil, fmt.Errorf("could not form normalized, joined routing table to run PIR request over")
+	}
 
 	encrypted_peer_ids, err := private_routing.RunPIRforCloserPeersRecords(pirRequest, bucketsWithAddrInfos)
 	if err != nil {
@@ -327,7 +330,10 @@ func (d *DHT) handlePrivateGetProviderRecords(ctx context.Context, remote peer.I
 		return nil, fmt.Errorf("no PIR Request sent in the message")
 	}
 
-	bucketsWithAddrInfos := d.normalizeRTJoinedWithPeerStore(kadt.PeerID(remote).Key())
+	bucketsWithAddrInfos, err := d.normalizeRTJoinedWithPeerStore(kadt.PeerID(remote).Key())
+	if err != nil {
+		return nil, fmt.Errorf("could not form normalized, joined routing table to run PIR request over")
+	}
 
 	encrypted_closer_peers, err := private_routing.RunPIRforCloserPeersRecords(pirRequest, bucketsWithAddrInfos)
 	if err != nil {
@@ -367,7 +373,7 @@ func (d *DHT) handlePrivateGetProviderRecords(ctx context.Context, remote peer.I
 // The (normalized) RT consists of <kad ID, peer ID> records.
 // The d.host.Peerstore() consists of <peer ID, peer address> records.
 // We then join these key-value stores here, oblivious to the target.
-func (d *DHT) normalizeRTJoinedWithPeerStore(queryingPeerKadId kadt.Key) [][]*pb.Message_Peer {
+func (d *DHT) normalizeRTJoinedWithPeerStore(queryingPeerKadId kadt.Key) ([][]byte, error) {
 	// TODO: How to extend this function to provide the functionality in Line 52 in handleFindPeer
 	//  obliviously to the target key.
 	// Line 52 in handleFindPeer looks up the peerstore with the target kademlia ID,
@@ -395,7 +401,7 @@ func (d *DHT) normalizeRTJoinedWithPeerStore(queryingPeerKadId kadt.Key) [][]*pb
 	bucketsWithPeerIDs := d.rt.NormalizeRT(queryingPeerKadId)
 
 	// Bucket -> <Peer ID -> multiaddress array
-	bucketsWithAddrInfos := make([][]*pb.Message_Peer, 0, len(bucketsWithPeerIDs))
+	bucketsWithAddrInfos := make([][]byte, 0, len(bucketsWithPeerIDs))
 
 	// Bucket -> <Peer ID and multiaddress array>
 	for bid, bucket := range bucketsWithPeerIDs {
@@ -405,8 +411,15 @@ func (d *DHT) normalizeRTJoinedWithPeerStore(queryingPeerKadId kadt.Key) [][]*pb
 			messagePeer := pb.FromAddrInfo(peerInfo)
 			addrInfos = append(addrInfos, messagePeer)
 		}
-		bucketsWithAddrInfos[bid] = addrInfos
+		mesg := &pb.Message{
+			CloserPeers: addrInfos,
+		}
+		marshalledRoutingEntries, err := proto.Marshal(mesg)
+		if err != nil {
+			return nil, fmt.Errorf("Could not marshal peers in RT. Err: %s ", err)
+		}
+		bucketsWithAddrInfos[bid] = marshalledRoutingEntries
 	}
 
-	return bucketsWithAddrInfos
+	return bucketsWithAddrInfos, nil
 }
