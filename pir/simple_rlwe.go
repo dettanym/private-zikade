@@ -28,7 +28,7 @@ type PIR_Protocol interface {
 type PIR_Protocol_Simple_RLWE struct {
 }
 
-func (p *PIR_Protocol_Simple_RLWE) ProcessRequestAndReturnResponse(msg *pb.PIR_Message) (*pb.PIR_Message, error) {
+func (p *PIR_Protocol_Simple_RLWE) ProcessRequestAndReturnResponse(msg *pb.PIR_Protocol_Simple_RLWE_Request) (*pb.PIR_Protocol_Simple_RLWE_Response, error) {
 	start := time.Now()
 
 	server_params, err := bfv.NewParametersFromLiteral(bfv.PN12QP109)
@@ -42,9 +42,15 @@ func (p *PIR_Protocol_Simple_RLWE) ProcessRequestAndReturnResponse(msg *pb.PIR_M
 	evaluator := bfv.NewEvaluator(server_params, &rlwe.EvaluationKeySet{})
 	server_plaintext := bfv.NewPlaintext(server_params, server_params.MaxLevel())
 
-	// TODO: This lines need to unmarshal the request
-	// TODO: How to unmarshal a vector of ciphertexts? I think we need to send a 2d byte array
-	ciphertexts := make([]*rlwe.Ciphertext, number_of_rows)
+	number_of_input_ciphertexts := int(msg.NumberOfCiphertexts)
+	ciphertexts := make([]*rlwe.Ciphertext, number_of_input_ciphertexts)
+	for i := 0; i < number_of_input_ciphertexts; i++ {
+		ciphertexts[i] = new(rlwe.Ciphertext)
+		err = ciphertexts[i].UnmarshalBinary(msg.Ciphertext[i])
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	db_row := encode_db_row_as_size_N_vector(0, uint64(N), uint64(plain_mod))
 	server_encoder.EncodeCoeffs(db_row, server_plaintext)
@@ -57,11 +63,15 @@ func (p *PIR_Protocol_Simple_RLWE) ProcessRequestAndReturnResponse(msg *pb.PIR_M
 	}
 
 	elapsed := time.Since(start)
-	log.Printf("elapsed time: ", elapsed)
+	log.Printf("elapsed time: %v", elapsed)
 
 	marshalled_response, err := ciphertexts[0].MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
-	return &pb.PIR_Message{Ciphertext: marshalled_response}, nil
+	// return &pb.PIR_Message{Ciphertext: marshalled_response}, nil
+	return &pb.PIR_Protocol_Simple_RLWE_Response{
+		NumberOfCiphertexts: 1,
+		Ciphertext:          [][]byte{marshalled_response},
+	}, nil
 }
