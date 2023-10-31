@@ -2,11 +2,35 @@ package private_routing
 
 import (
 	"fmt"
+
 	"github.com/plprobelab/zikade/pb"
+	pir "github.com/plprobelab/zikade/pir"
 )
 
-func RunPIRforCloserPeersRecords(req *pb.PIR_Request, ModifiedRT [][]*pb.Message_Peer) (*pb.PIR_Message, error) {
-	pir_request := req.Key
+// TODO: The normalized routing table has to be passed in this somehow.
+// Use the normalized routing table to compute the PIR response.
+// For now it's just using a dummy DB
+func RunPIRforCloserPeersRecords(req *pb.PIR_Request, ModifiedRT [][]*pb.Message_Peer) (*pb.PIR_Response, error) {
+
+	var pir pir.PIR_Protocol_Simple_RLWE
+	response, err := pir.ProcessRequestAndReturnResponse(req.SimpleRlweQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.PIR_Response{
+		SimpleRlweResponse: response,
+	}, nil
+
+	// for bucketId, bucket := range ModifiedRT {
+	// 	peersInBucket := make([]*pb.Message, 0)
+	// 	for _, peer := range bucket {
+	// 		*peer.Addrs
+	// 	}
+	// }
+
+	// Import the simple_rlwe.go file and call the function that does the PIR
+
 	return nil, fmt.Errorf("could not compute PIR response over ModifiedRT of peer records")
 }
 
