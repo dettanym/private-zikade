@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/plprobelab/zikade/pb"
+	"google.golang.org/protobuf/proto"
 	"io"
 	"strings"
 	"sync"
@@ -284,7 +285,7 @@ func (p *ProvidersBackend) Validate(ctx context.Context, key string, values ...a
 // We could lookup the datastore via PIR,
 // but then we cannot use that PIR output as an index to lookup the addressbook privately.
 // So we need to flatten out or join the two data structures for PIR to work.
-func (p *ProvidersBackend) MapCIDsToProviderPeersForPIR(ctx context.Context) (map[string][]*pb.Message_Peer, error) {
+func (p *ProvidersBackend) MapCIDsToProviderPeersForPIR(ctx context.Context) (map[string][]byte, error) {
 	now := p.cfg.clk.Now()
 
 	mapCIDtoProviderSet := make(map[string]*providerSet)
@@ -326,7 +327,7 @@ func (p *ProvidersBackend) MapCIDsToProviderPeersForPIR(ctx context.Context) (ma
 		}
 	}
 
-	mapCIDtoProviderPeers := make(map[string][]*pb.Message_Peer)
+	mapCIDtoProviderPeers := make(map[string][]byte, len(mapCIDtoProviderSet))
 
 	// Transforms the set of providers into a PB Message that can be marshalled into a byte array.
 	// This is based on how handleGetProviders processes the output of Fetch
@@ -337,10 +338,20 @@ func (p *ProvidersBackend) MapCIDsToProviderPeersForPIR(ctx context.Context) (ma
 	// since somehow there can be duplicate addrInfos for the same peerID and CID?
 	// providerSet's addProvider method rules them out.
 	for cid, providerSetForCID := range mapCIDtoProviderSet {
-		mapCIDtoProviderPeers[cid] = make([]*pb.Message_Peer, len(providerSetForCID.providers))
-		for i, provider := range providerSetForCID.providers {
-			mapCIDtoProviderPeers[cid][i] = pb.FromAddrInfo(provider)
+		addrInfos := make([]*pb.Message_Peer, len(providerSetForCID.providers))
+		for _, provider := range providerSetForCID.providers {
+			messagePeer := pb.FromAddrInfo(provider)
+			addrInfos = append(addrInfos, messagePeer)
 		}
+		mesg := &pb.Message{
+			ProviderPeers: addrInfos,
+		}
+		marshalledRoutingEntries, err := proto.Marshal(mesg)
+		if err != nil {
+			return nil, fmt.Errorf("Could not marshal peers in RT. Err: %s ", err)
+		}
+		mapCIDtoProviderPeers[cid] = marshalledRoutingEntries
+
 	}
 
 	return mapCIDtoProviderPeers, err

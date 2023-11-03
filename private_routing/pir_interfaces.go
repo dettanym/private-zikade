@@ -7,10 +7,7 @@ import (
 	pir "github.com/plprobelab/zikade/pir"
 )
 
-// TODO: The normalized routing table has to be passed in this somehow.
-// Use the normalized routing table to compute the PIR response.
-// For now it's just using a dummy DB
-func RunPIRforCloserPeersRecords(req *pb.PIR_Request, ModifiedRT [][]*pb.Message_Peer) (*pb.PIR_Response, error) {
+func RunPIRforCloserPeersRecords(req *pb.PIR_Request, ModifiedRT [][]byte) (*pb.PIR_Response, error) {
 
 	var pir pir.PIR_Protocol_Simple_RLWE
 	response, err := pir.ProcessRequestAndReturnResponse(req.SimpleRlweQuery)
@@ -30,11 +27,10 @@ func RunPIRforCloserPeersRecords(req *pb.PIR_Request, ModifiedRT [][]*pb.Message
 	// }
 
 	// Import the simple_rlwe.go file and call the function that does the PIR
-
 	return nil, fmt.Errorf("could not compute PIR response over ModifiedRT of peer records")
 }
 
-func RunPIRforProviderPeersRecords(req *pb.PIR_Request, mapCIDtoProviderPeers map[string][]*pb.Message_Peer) (*pb.PIR_Message, error) {
+func RunPIRforProviderPeersRecords(req *pb.PIR_Request, mapCIDtoProviderPeers map[string][]byte) (*pb.PIR_Message, error) {
 	pir_request := req.Key
 	// Maybe this method (runPIRforProviderPeerRecords) needs to be called from a PrivateFetch method on the Backend interface.
 	// The PrivateFetch method can compute the join privately and then just run this method internally, returning the encrypted providerpeers.
