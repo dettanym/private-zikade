@@ -1,4 +1,4 @@
-module github.com/dettanym/private-zikade
+module github.com/plprobelab/zikade
 
 go 1.20
 
@@ -32,9 +32,9 @@ require (
 )
 
 require (
-	github.com/dettanym/go-ds-leveldb v0.0.0-20230930021941-caec7a2eae31
-	github.com/dettanym/private-go-kademlia v0.0.0-20231026234727-ee167ea4bb18
-	github.com/plprobelab/zikade v0.0.0-unpublished
+	github.com/ipfs/go-ds-leveldb v0.0.0-unpublished // v0.5.0
+	github.com/plprobelab/go-kademlia v0.0.0-unpublished // v0.0.0-20231128102953-2bde14c38510
+	github.com/tuneinsight/lattigo/v4 v4.1.0
 )
 
 require (
@@ -50,7 +50,6 @@ require (
 	github.com/elastic/gosigar v0.14.2 // indirect
 	github.com/flynn/noise v1.0.0 // indirect
 	github.com/francoispqt/gojay v1.2.13 // indirect
-	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-logr/logr v1.2.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 // indirect
@@ -58,7 +57,7 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db // indirect
+	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
 	github.com/google/pprof v0.0.0-20230817174616-7a8ec2ada47b // indirect
 	github.com/google/uuid v1.3.0 // indirect
@@ -96,11 +95,11 @@ require (
 	github.com/multiformats/go-multicodec v0.9.0 // indirect
 	github.com/multiformats/go-multistream v0.4.1 // indirect
 	github.com/multiformats/go-varint v0.0.7 // indirect
+	github.com/nxadm/tail v1.4.11 // indirect
 	github.com/onsi/ginkgo/v2 v2.11.0 // indirect
 	github.com/opencontainers/runtime-spec v1.1.0 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58 // indirect
-	github.com/plprobelab/go-kademlia v0.0.0-20230914085641-54e0b94d02bd // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/polydawn/refmt v0.89.0 // indirect
 	github.com/prometheus/client_model v0.4.0 // indirect
@@ -133,7 +132,6 @@ require (
 	lukechampine.com/blake3 v1.2.1 // indirect
 )
 
-replace github.com/plprobelab/zikade v0.0.0-unpublished => ./
+replace github.com/plprobelab/go-kademlia v0.0.0-unpublished => ../private-go-kademlia
 
-//replace github.com/ipfs/go-ds-leveldb v0.5.0 => github.com/dettanym/go-ds-leveldb v0.0.0-20230930021941-caec7a2eae31
-// replace github.com/plprobelab/go-libdht/kad/triert => github.com/dettanym/private-go-libdht/kad/triert v0.0.0-20231018152749-8fc677eab46a
+replace github.com/ipfs/go-ds-leveldb v0.0.0-unpublished => ../go-ds-leveldb
