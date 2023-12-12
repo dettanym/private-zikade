@@ -100,11 +100,9 @@ message PIR_Response {
 }
 
 message PIR_Protocol_Simple_RLWE_Request {
-	int32 number_of_ciphertexts = 1;
-	repeated bytes ciphertext = 2;
+	bytes query = 1;
 }
 
 message PIR_Protocol_Simple_RLWE_Response {
-	int32 number_of_ciphertexts = 1;
-	repeated bytes ciphertext = 2;
+	bytes response = 1;
 }
