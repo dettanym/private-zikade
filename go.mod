@@ -32,12 +32,14 @@ require (
 )
 
 require (
-	github.com/ipfs/go-ds-leveldb v0.0.0-unpublished // v0.5.0
+	github.com/ipfs/go-ds-leveldb v0.5.0 // v0.5.0
 	github.com/plprobelab/go-kademlia v0.0.0-unpublished // v0.0.0-20231128102953-2bde14c38510
-	github.com/tuneinsight/lattigo/v4 v4.1.0
+	// github.com/tuneinsight/lattigo/v4 v4.1.0
+	github.com/tuneinsight/lattigo/v5 v5.0.2
 )
 
 require (
+	github.com/ALTree/bigfloat v0.0.0-20220102081255-38c8b72a9924 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
@@ -58,6 +60,7 @@ require (
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
+	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
 	github.com/google/pprof v0.0.0-20230817174616-7a8ec2ada47b // indirect
 	github.com/google/uuid v1.3.0 // indirect
