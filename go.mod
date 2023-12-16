@@ -32,7 +32,7 @@ require (
 )
 
 require (
-	github.com/ipfs/go-ds-leveldb v0.0.0-unpublished // v0.5.0
+	github.com/ipfs/go-ds-leveldb v0.5.0
 	github.com/plprobelab/go-kademlia v0.0.0-unpublished // v0.0.0-20231128102953-2bde14c38510
 	// github.com/tuneinsight/lattigo/v4 v4.1.0
 	github.com/tuneinsight/lattigo/v5 v5.0.2
@@ -137,4 +137,4 @@ require (
 
 replace github.com/plprobelab/go-kademlia v0.0.0-unpublished => github.com/dettanym/private-go-kademlia v0.0.0-20231212182206-17418486df39 //../private-go-kademlia
 
-replace github.com/ipfs/go-ds-leveldb v0.0.0-unpublished => github.com/dettanym/go-ds-leveldb v0.0.0-20230930021941-caec7a2eae31
+replace github.com/ipfs/go-ds-leveldb v0.5.0 => github.com/dettanym/go-ds-leveldb v0.0.0-20230930021941-caec7a2eae31
