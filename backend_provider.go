@@ -51,7 +51,7 @@ type ProvidersBackend struct {
 	// The datastore must be thread-safe.
 	// Note: The datastore does not map key = CID to value = PeerID
 	// It maps key = CID || PeerID to value = expiry time
-	datastore DatastoreWithGetAll
+	datastore ds.Datastore
 
 	// gcSkip is a sync map that marks records as to-be-skipped by the garbage
 	// collection process. TODO: this is a sub-optimal pattern.
@@ -290,9 +290,26 @@ func (p *ProvidersBackend) MapCIDsToProviderPeersForPIR(ctx context.Context) (ma
 
 	mapCIDtoProviderSet := make(map[string]*providerSet)
 
-	datastore, err := p.datastore.GetAll(ctx)
+	q, err := p.datastore.Query(ctx, dsq.Query{Prefix: "/"}) // also works with the empty string
 
-	for dsKey, dsValue := range datastore {
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if err = q.Close(); err != nil {
+			p.log.LogAttrs(ctx, slog.LevelWarn, "failed closing fetch query", slog.String("err", err.Error()))
+		}
+	}()
+
+	for e := range q.Next() {
+		if e.Error != nil {
+			p.log.LogAttrs(ctx, slog.LevelWarn, "Fetch datastore entry contains error", slog.String("key", e.Key), slog.String("err", e.Error.Error()))
+			continue
+		}
+
+		dsKey := ds.RawKey(e.Key)
+		dsValue := string(e.Value)
 		// Drop expired provider advertisements
 		isRecordExpired, record := p.deleteExpiredRecords(ctx, now, dsKey, dsValue)
 		if isRecordExpired {
