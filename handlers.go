@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	ds "github.com/ipfs/go-datastore"
 	record "github.com/libp2p/go-libp2p-record"
 	recpb "github.com/libp2p/go-libp2p-record/pb"
@@ -295,11 +296,11 @@ func (d *DHT) handlePrivateFindPeer(ctx context.Context, remote peer.ID, msg *pb
 		return nil, fmt.Errorf("could not form normalized, joined routing table to run PIR request over")
 	}
 
-	encrypted_peer_ids, err := private_routing.RunPIRforCloserPeersRecords(pirRequest, bucketsWithAddrInfos)
+	pirResponse, err := private_routing.RunPIRforCloserPeersRecords(pirRequest, bucketsWithAddrInfos)
 	if err != nil {
 		return nil, err
 	}
-	println(encrypted_peer_ids)
+	println(pirResponse)
 
 	// TODO Ask Gui: handleFindPeer also looks up peerStore directly for the target key and adds it to the closerPeers.
 	// This might be necessary as we may not store the node's (KadID, PeerID) if our bucket is full,
@@ -307,11 +308,6 @@ func (d *DHT) handlePrivateFindPeer(ctx context.Context, remote peer.ID, msg *pb
 	// So do we need to do another PIR over the peer store?
 	// Or before we normalize the RT,
 	// can we "fill up" our RT with kadID, peerID of records that are in the peerStore but not in the RT?
-
-	pirResponse := &pb.PIR_Response{
-		Id: pirRequest.Id,
-		// CloserPeers: encrypted_peer_ids,
-	}
 
 	response := &pb.Message{
 		Type:             pb.Message_PRIVATE_FIND_NODE,
@@ -355,13 +351,13 @@ func (d *DHT) handlePrivateGetProviderRecords(ctx context.Context, remote peer.I
 		return nil, fmt.Errorf("could not construct a map of CIDs to provider peers for PIR")
 	}
 
-	encrypted_provider_peers, err := private_routing.RunPIRforProviderPeersRecords(pirRequest, mapCIDtoProviderPeers)
-	println(encrypted_provider_peers)
-	pirResponse := &pb.PIR_Response{
-		Id: pirRequest.Id,
-		// CloserPeers:   encrypted_closer_peers,
-		ProviderPeers: encrypted_provider_peers,
-	}
+	pirResponse, err := private_routing.RunPIRforProviderPeersRecords(pirRequest, mapCIDtoProviderPeers)
+	// println(encrypted_provider_peers)
+	// pirResponse := &pb.PIR_Response{
+	// 	Id:            pirRequest.Id,
+	// 	CloserPeers:   encrypted_closer_peers,
+	// 	ProviderPeers: encrypted_provider_peers,
+	// }
 
 	response := &pb.Message{
 		Type:             pb.Message_PRIVATE_GET_PROVIDERS,

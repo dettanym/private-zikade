@@ -77,32 +77,19 @@ message Message {
 	PIR_Response encrypted_records = 33;
 }
 
-// Used in PRIVATE_FIND_NODE and PRIVATE_GET_PROVIDERS
-// Represents PIR Request or Response.
-message PIR_Message {
-	// Represents a block of Homomorphically Encrypted Ciphertext
-	bytes ciphertext = 1;
-}
-
 // ID should just be a hash of the ciphertext. Used as a request ID.
 // Does not correspond to any keys in the Kademlia ID or peer ID spaces.
 message PIR_Request {
 	bytes id = 1;
-	PIR_Message key = 2;
-	PIR_Protocol_Simple_RLWE_Request simple_rlwe_query = 3;
+	
+	bytes closer_pir_query = 2;
+	bytes provider_peer_query = 3;
 }
 
 message PIR_Response {
 	bytes id = 1;
-	PIR_Message closer_peers = 2;
-	PIR_Message provider_peers = 3;
-	PIR_Protocol_Simple_RLWE_Response simple_rlwe_response = 4;
-}
-
-message PIR_Protocol_Simple_RLWE_Request {
-	bytes query = 1;
-}
-
-message PIR_Protocol_Simple_RLWE_Response {
-	bytes response = 1;
+	
+	bytes closer_peers = 2;
+	bytes provider_peers = 3;
+	
 }

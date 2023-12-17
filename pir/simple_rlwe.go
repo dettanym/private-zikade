@@ -7,7 +7,6 @@ import (
 	"math"
 	"time"
 
-	"github.com/plprobelab/zikade/pb"
 	"github.com/tuneinsight/lattigo/v5/core/rlwe"
 	"github.com/tuneinsight/lattigo/v5/he/heint"
 	"github.com/tuneinsight/lattigo/v5/utils/structs"
@@ -105,18 +104,17 @@ func (q *SimpleRLWEPIRQuery) UnmarshalBinary(data []byte) error {
 }
 
 type PIR_Protocol interface {
-	ProcessRequestAndReturnResponse(msg *pb.PIR_Message, database [][]byte) (*pb.PIR_Message, error)
+	ProcessRequestAndReturnResponse(msg []byte, database [][]byte) ([]byte, error)
 }
 
 type PIR_Protocol_Simple_RLWE struct {
 }
 
-func (p *PIR_Protocol_Simple_RLWE) ProcessRequestAndReturnResponse(msg *pb.PIR_Protocol_Simple_RLWE_Request, database [][]byte) (*pb.PIR_Protocol_Simple_RLWE_Response, error) {
+func (p *PIR_Protocol_Simple_RLWE) ProcessRequestAndReturnResponse(query_bytes []byte, database [][]byte) ([]byte, error) {
 
 	start := time.Now()
 
 	// Set to the bytes of the query
-	query_bytes := msg.Query
 
 	query := &SimpleRLWEPIRQuery{}
 	err := query.UnmarshalBinary(query_bytes)
@@ -184,8 +182,6 @@ func (p *PIR_Protocol_Simple_RLWE) ProcessRequestAndReturnResponse(msg *pb.PIR_P
 	elapsed := time.Since(start)
 	log.Printf("elapsed time: %v", elapsed)
 
-	return &pb.PIR_Protocol_Simple_RLWE_Response{
-		Response: response_bytes,
-	}, nil
+	return response_bytes, nil
 
 }
