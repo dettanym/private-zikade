@@ -10,7 +10,7 @@ import (
 func RunPIRforCloserPeersRecords(req *pb.PIR_Request, ModifiedRT [][]byte) (*pb.PIR_Response, error) {
 
 	var pir pir.PIR_Protocol_Simple_RLWE
-	response, err := pir.ProcessRequestAndReturnResponse(req.SimpleRlweQuery)
+	response, err := pir.ProcessRequestAndReturnResponse(req.SimpleRlweQuery, ModifiedRT)
 	if err != nil {
 		return nil, err
 	}
@@ -18,13 +18,6 @@ func RunPIRforCloserPeersRecords(req *pb.PIR_Request, ModifiedRT [][]byte) (*pb.
 	return &pb.PIR_Response{
 		SimpleRlweResponse: response,
 	}, nil
-
-	// for bucketId, bucket := range ModifiedRT {
-	// 	peersInBucket := make([]*pb.Message, 0)
-	// 	for _, peer := range bucket {
-	// 		*peer.Addrs
-	// 	}
-	// }
 
 	// Import the simple_rlwe.go file and call the function that does the PIR
 	return nil, fmt.Errorf("could not compute PIR response over ModifiedRT of peer records")

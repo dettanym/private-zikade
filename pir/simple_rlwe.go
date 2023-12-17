@@ -3,18 +3,23 @@ package private_routing
 import (
 	"encoding/binary"
 	"fmt"
+	"log"
+	"math"
+	"time"
+
 	"github.com/plprobelab/zikade/pb"
 	"github.com/tuneinsight/lattigo/v5/core/rlwe"
 	"github.com/tuneinsight/lattigo/v5/he/heint"
+	"github.com/tuneinsight/lattigo/v5/utils/structs"
 )
 
-type Query struct {
+type SimpleRLWEPIRQuery struct {
 	parameters      heint.Parameters
 	evaluation_keys rlwe.MemEvaluationKeySet
 	encrypted_query rlwe.Ciphertext
 }
 
-func (q *Query) MarshalBinary() ([]byte, error) {
+func (q *SimpleRLWEPIRQuery) MarshalBinary() ([]byte, error) {
 	params_bytes, err := q.parameters.MarshalBinary()
 	if err != nil {
 		return nil, err
@@ -51,7 +56,7 @@ func (q *Query) MarshalBinary() ([]byte, error) {
 	return result, nil
 }
 
-func (q *Query) UnmarshalBinary(data []byte) error {
+func (q *SimpleRLWEPIRQuery) UnmarshalBinary(data []byte) error {
 	// Helper function to read next byte slice
 	readNextBytes := func(data []byte) ([]byte, []byte, error) {
 		if len(data) < 8 {
@@ -99,83 +104,88 @@ func (q *Query) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
-// // This function needs to fetch the 'index'th row from the database.
-// // And return the data as a vector of N uint64, where each number if less than mod
-// func encode_db_row_as_size_N_vector(index uint64, N uint64, mod uint64) []uint64 {
-// 	// TODO: Make this function actually fetch the row from the database
-// 	// Right now it's just generating a random row
-// 	db_rows := make([]uint64, N)
-// 	for i := uint64(0); i < N; i++ {
-// 		db_rows[i] = uint64(((i*i)%mod + i) % mod)
-// 	}
-// 	return db_rows
-// }
-
 type PIR_Protocol interface {
-	ProcessRequestAndReturnResponse(msg *pb.PIR_Message) (*pb.PIR_Message, error)
+	ProcessRequestAndReturnResponse(msg *pb.PIR_Message, database [][]byte) (*pb.PIR_Message, error)
 }
 
 type PIR_Protocol_Simple_RLWE struct {
 }
 
-func (p *PIR_Protocol_Simple_RLWE) ProcessRequestAndReturnResponse(msg *pb.PIR_Protocol_Simple_RLWE_Request) (*pb.PIR_Protocol_Simple_RLWE_Response, error) {
-	return nil, nil
-	//start := time.Now()
-	//
-	//// Set to the bytes of the query
-	//query_struct_bytes := msg.Query
-	//
-	//query := &Query{}
-	//err := query.UnmarshalBinary(query_struct_bytes)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//
-	//params := query.parameters
-	//evk := &query.evaluation_keys
-	//encrypted_data := &query.encrypted_query
-	//
-	//N := params.N()
-	//evaluator := heint.NewEvaluator(params, evk)
-	//encoder := heint.NewEncoder(params)
-	//
-	//ciphertexts, err := evaluator.Expand(encrypted_data, 8, 0)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//
-	//for i := 0; i < 256; i++ {
-	//
-	//	// this part is encoding the content of row i in the coefficients of a polynomial
-	//	// For now it's just random junk
-	//	// TODO: change this to encode the bytes of row i in the routing table
-	//	coeffs := make([]uint64, N)
-	//	for j := 0; j < int(N); j++ {
-	//		coeffs[j] = uint64((j * (i + 5) * i) % int(params.PlaintextModulus()))
-	//	}
-	//	poly_pt := heint.NewPlaintext(params, params.MaxLevel())
-	//	poly_pt.MetaData.IsBatched = false
-	//	encoder.Encode(coeffs, poly_pt)
-	//	///
-	//
-	//	if i == 0 {
-	//		evaluator.Mul(ciphertexts[i], poly_pt, ciphertexts[i])
-	//	} else {
-	//		evaluator.MulThenAdd(ciphertexts[i], poly_pt, ciphertexts[0])
-	//	}
-	//}
-	//
-	//var response_bytes []byte
-	//// println("Response:", ciphertexts[0].BinarySize()/1024, "KB")
-	//response_bytes, err = ciphertexts[0].MarshalBinary()
-	//if err != nil {
-	//	return nil, err
-	//}
-	//elapsed := time.Since(start)
-	//log.Printf("elapsed time: %v", elapsed)
-	//
-	//return &pb.PIR_Protocol_Simple_RLWE_Response{
-	//	Response: response_bytes,
-	//}, nil
+func (p *PIR_Protocol_Simple_RLWE) ProcessRequestAndReturnResponse(msg *pb.PIR_Protocol_Simple_RLWE_Request, database [][]byte) (*pb.PIR_Protocol_Simple_RLWE_Response, error) {
+
+	start := time.Now()
+
+	// Set to the bytes of the query
+	query_bytes := msg.Query
+
+	query := &SimpleRLWEPIRQuery{}
+	err := query.UnmarshalBinary(query_bytes)
+	if err != nil {
+		return nil, err
+	}
+
+	log2_num_rows := 8
+	params := query.parameters
+	evaluation_keys := query.evaluation_keys
+	encrypted_query := query.encrypted_query
+
+	N := params.N()
+	evaluator := heint.NewEvaluator(params, &evaluation_keys)
+	encoder := heint.NewEncoder(params)
+
+	indicator_bits, err := evaluator.Expand(&encrypted_query, log2_num_rows, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	num_rows := 1 << log2_num_rows
+
+	bytes_per_coefficient := int(math.Floor(math.Log2(float64(params.PlaintextModulus())))) / 8
+	bytes_per_ciphertext := bytes_per_coefficient * int(N)
+	number_of_response_ciphertexts := (len(database) + bytes_per_coefficient - 1) / bytes_per_coefficient
+
+	response_ciphertexts := make([]rlwe.Ciphertext, number_of_response_ciphertexts)
+
+	// WARNING: Inner loop is not paralleliable
+	for k := 0; k < number_of_response_ciphertexts; k++ {
+		for i := 0; i < num_rows; i++ {
+			// this part is encoding the content of row i in the coefficients of a polynomial
+			// TODO: change this to encode the bytes of row i in the routing table
+			coeffs := make([]uint64, N)
+			for j := 0; j < N; j++ {
+				start_index := bytes_per_ciphertext*k + bytes_per_coefficient*j
+				coeffs[j] = binary.LittleEndian.Uint64(database[i][start_index : start_index+bytes_per_coefficient])
+			}
+			row_data_plaintext := heint.NewPlaintext(params, params.MaxLevel())
+			row_data_plaintext.IsBatched = false
+			encoder.Encode(coeffs, row_data_plaintext)
+			///
+
+			// We accumulate the results in the first cipertext so we don't require the
+			// public key to create a new ciphertext
+			if i == 0 {
+				tmp, err := evaluator.MulNew(indicator_bits[i], row_data_plaintext)
+				if err != nil {
+					panic(err)
+				}
+				response_ciphertexts[k] = *tmp
+			} else {
+				evaluator.MulThenAdd(indicator_bits[i], row_data_plaintext, &response_ciphertexts[k])
+			}
+		}
+	}
+
+	// println("Response:", ciphertexts[0].BinarySize()/1024, "KB")
+	response_bytes, err := structs.Vector[rlwe.Ciphertext](response_ciphertexts).MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	// return response_bytes
+	elapsed := time.Since(start)
+	log.Printf("elapsed time: %v", elapsed)
+
+	return &pb.PIR_Protocol_Simple_RLWE_Response{
+		Response: response_bytes,
+	}, nil
 
 }
