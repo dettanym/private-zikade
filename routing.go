@@ -26,6 +26,51 @@ import (
 
 var _ routing.Routing = (*DHT)(nil)
 
+func (d *DHT) FindPeerPrivately(ctx context.Context, id peer.ID) (peer.AddrInfo, error) {
+	ctx, span := d.tele.Tracer.Start(ctx, "DHT.FindPeerPrivately")
+	defer span.End()
+
+	// First check locally. If we are or were recently connected to the peer,
+	// return the addresses from our peerstore unless the information doesn't
+	// contain any.
+	switch d.host.Network().Connectedness(id) {
+	case network.Connected, network.CanConnect:
+		addrInfo := d.host.Peerstore().PeerInfo(id)
+		if addrInfo.ID != "" && len(addrInfo.Addrs) > 0 {
+			return addrInfo, nil
+		}
+	default:
+		// we're not connected or were recently connected
+	}
+
+	var foundPeer peer.ID
+
+	callback := func(ctx context.Context, visited kadt.PeerID, msg *pb.Message, stats coordt.QueryStats) error {
+		// TODO: Process PIR response here
+		if peer.ID(visited) == id {
+			foundPeer = peer.ID(visited)
+			return coordt.ErrSkipRemaining
+		}
+		return nil
+	}
+
+	// TODO: The PIRRequest will be different for each node.
+	//  QueryPrivate generates a PIR request from this plaintext one.
+	plaintextRequest := pb.Message{Key: kadt.PeerID(id).Key().MsgKey()}
+
+	_, _, err := d.kad.QueryPrivate(ctx, &plaintextRequest, callback, 20)
+	if err != nil {
+		return peer.AddrInfo{}, fmt.Errorf("failed to run query: %w", err)
+	}
+
+	if foundPeer == "" {
+		return peer.AddrInfo{}, fmt.Errorf("peer record not found")
+	}
+
+	// This just extracts the multiaddress from foundPeer
+	return d.host.Peerstore().PeerInfo(foundPeer), nil
+}
+
 func (d *DHT) FindPeer(ctx context.Context, id peer.ID) (peer.AddrInfo, error) {
 	ctx, span := d.tele.Tracer.Start(ctx, "DHT.FindPeer")
 	defer span.End()
@@ -111,8 +156,106 @@ func (d *DHT) Provide(ctx context.Context, c cid.Cid, brdcst bool) error {
 
 func (d *DHT) FindProvidersAsync(ctx context.Context, c cid.Cid, count int) <-chan peer.AddrInfo {
 	peerOut := make(chan peer.AddrInfo)
+	// TODO: Replace this with d.findProvidersAsyncRoutinePrivate
 	go d.findProvidersAsyncRoutine(ctx, c, count, peerOut)
 	return peerOut
+}
+
+func (d *DHT) findProvidersAsyncRoutinePrivate(ctx context.Context, c cid.Cid, count int, out chan<- peer.AddrInfo) {
+	_, span := d.tele.Tracer.Start(ctx, "DHT.findProvidersAsyncRoutinePrivate", otel.WithAttributes(attribute.String("cid", c.String()), attribute.Int("count", count)))
+	defer span.End()
+
+	defer close(out)
+
+	// verify if this DHT supports provider records by checking
+	// if a "providers" backend is registered.
+	b, found := d.backends[namespaceProviders]
+	if !found || !c.Defined() {
+		span.RecordError(fmt.Errorf("no providers backend registered or CID undefined"))
+		return
+	}
+
+	// send all providers onto the out channel until the desired count
+	// was reached. If no count was specified, continue with network lookup.
+	providers := map[peer.ID]struct{}{}
+
+	// first fetch the record locally
+	stored, err := b.Fetch(ctx, string(c.Hash()))
+	if err != nil {
+		if !errors.Is(err, ds.ErrNotFound) {
+			span.RecordError(err)
+			d.log.Warn("Fetching value from provider store", slog.String("cid", c.String()), slog.String("err", err.Error()))
+			return
+		}
+
+		stored = &providerSet{}
+	}
+
+	ps, ok := stored.(*providerSet)
+	if !ok {
+		span.RecordError(err)
+		d.log.Warn("Stored value is not a provider set", slog.String("cid", c.String()), slog.String("type", fmt.Sprintf("%T", stored)))
+		return
+	}
+
+	for _, provider := range ps.providers {
+		providers[provider.ID] = struct{}{}
+
+		select {
+		case <-ctx.Done():
+			return
+		case out <- provider:
+		}
+
+		if count != 0 && len(providers) == count {
+			return
+		}
+	}
+
+	// Craft message to send to other peers
+	msg := &pb.Message{
+		Type: pb.Message_GET_PROVIDERS,
+		Key:  c.Hash(),
+	}
+
+	// handle node response
+	callback := func(ctx context.Context, id kadt.PeerID, resp *pb.Message, stats coordt.QueryStats) error {
+		// TODO: Process PIR Response from resp here
+		// loop through all providers that the remote peer returned
+		for _, provider := range resp.ProviderAddrInfos() {
+
+			// if we had already sent that peer on the channel -> do nothing
+			if _, found := providers[provider.ID]; found {
+				continue
+			}
+
+			// keep track that we will have sent this peer on the channel
+			providers[provider.ID] = struct{}{}
+
+			// actually send the provider information to the user
+			select {
+			case <-ctx.Done():
+				return coordt.ErrSkipRemaining
+			case out <- provider:
+			}
+
+			// if count is 0, we will wait until the query has exhausted the keyspace
+			// if count isn't 0, we will stop if the number of providers we have sent
+			// equals the number that the user has requested.
+			if count != 0 && len(providers) == count {
+				return coordt.ErrSkipRemaining
+			}
+		}
+
+		return nil
+	}
+
+	_, _, err = d.kad.QueryPrivate(ctx, msg, callback, d.cfg.BucketSize)
+	if err != nil {
+		span.RecordError(err)
+		d.log.Warn("Failed querying", slog.String("cid", c.String()), slog.String("err", err.Error()))
+		return
+	}
 }
 
 func (d *DHT) findProvidersAsyncRoutine(ctx context.Context, c cid.Cid, count int, out chan<- peer.AddrInfo) {
