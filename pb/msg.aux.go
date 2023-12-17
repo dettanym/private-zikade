@@ -36,6 +36,10 @@ func (m *Message) ExpectResponse() bool {
 		return true
 	case Message_PING:
 		return true
+	case Message_PRIVATE_FIND_NODE:
+		return true
+	case Message_PRIVATE_GET_PROVIDERS:
+		return true
 	default:
 		panic(fmt.Sprintf("unexpected message type %d", m.Type))
 	}
