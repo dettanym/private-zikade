@@ -5,36 +5,22 @@ import (
 	ds "github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
 	"github.com/ipfs/go-datastore/trace"
-	"go.opentelemetry.io/otel/codes"
 	otel "go.opentelemetry.io/otel/trace"
 )
 
 type DatastoreWithTracer struct {
-	ds              DatastoreWithGetAll
+	ds              ds.Datastore
 	tracer          otel.Tracer
 	tracedDataStore trace.Datastore
 }
 
-func NewDatastoreWithTracer(ds DatastoreWithGetAll, tracer otel.Tracer) *DatastoreWithTracer {
+func NewDatastoreWithTracer(ds ds.Datastore, tracer otel.Tracer) *DatastoreWithTracer {
 	t := *trace.New(ds, tracer)
 	return &DatastoreWithTracer{
 		ds:              ds,
 		tracer:          tracer,
 		tracedDataStore: t,
 	}
-}
-
-func (t *DatastoreWithTracer) GetAll(ctx context.Context) (value map[ds.Key]string, err error) {
-	ctx, span := t.tracer.Start(ctx, "GetAll")
-	defer span.End()
-
-	value, err = t.ds.GetAll(ctx)
-	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-	}
-
-	return value, err
 }
 
 func (t *DatastoreWithTracer) Put(ctx context.Context, key ds.Key, value []byte) error {

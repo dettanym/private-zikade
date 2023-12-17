@@ -1,7 +1,6 @@
 package zikade
 
 import (
-	"context"
 	"fmt"
 	"time"
 
@@ -60,17 +59,15 @@ type (
 	// only has the two forms: client or server.
 	mode string
 
-	// DatastoreWithGetall is an interface definition that gathers the datastore
+	// Datastore is an interface definition that gathers the datastore
 	// requirements. The [DHT] requires the datastore to support batching and
 	// transactions. Example datastores that implement both features are leveldb
 	// and badger. leveldb can also be used in memory - this is used as the
 	// default datastore.
-	DatastoreWithGetAll interface {
+	Datastore interface {
 		ds.Datastore
 		ds.BatchingFeature
 		ds.TxnFeature
-
-		GetAll(ctx context.Context) (KVStore map[ds.Key]string, err error)
 	}
 
 	AddressFilter func([]ma.Multiaddr) []ma.Multiaddr
@@ -158,7 +155,7 @@ type Config struct {
 	// required to register backends for the ipns, pk, and providers namespaces.
 	//
 	// This datastore must be thread-safe.
-	Datastore DatastoreWithGetAll
+	Datastore Datastore
 
 	// Logger can be used to configure a custom structured logger instance.
 	// By default go.uber.org/zap is used (wrapped in ipfs/go-log).
@@ -219,7 +216,7 @@ func DefaultRoutingTable(nodeID kadt.PeerID, bucketSize int) (routing.RoutingTab
 }
 
 // InMemoryDatastore returns an in-memory leveldb datastore.
-func InMemoryDatastore() (DatastoreWithGetAll, error) {
+func InMemoryDatastore() (Datastore, error) {
 	return leveldb.NewDatastore("", nil)
 }
 

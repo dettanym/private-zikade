@@ -169,7 +169,7 @@ func New(h host.Host, cfg *Config) (*DHT, error) {
 func (d *DHT) initAminoBackends() (map[string]Backend, error) {
 	var (
 		err    error
-		dstore DatastoreWithGetAll
+		dstore Datastore
 	)
 
 	if d.cfg.Datastore != nil {
