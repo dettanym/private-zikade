@@ -290,6 +290,52 @@ func (c *Coordinator) GetClosestNodes(ctx context.Context, k kadt.Key, n int) ([
 	return c.rt.NearestNodes(k, n), nil
 }
 
+// QueryPrivate reimplements QueryMessage, when the message sent to each node may be different
+// When privately retrieving peer records from other nodes, the PIR requests to each node are different.
+// TODO: fn should be of the type coordt.QueryFunc and more specifically, it should process PIR responses.
+func (c *Coordinator) QueryPrivate(ctx context.Context, msg *pb.Message, fn coordt.QueryFunc, numResults int) ([]kadt.PeerID, coordt.QueryStats, error) {
+	ctx, span := c.tele.Tracer.Start(ctx, "Coordinator.QueryPrivate")
+	defer span.End()
+	if msg == nil {
+		return nil, coordt.QueryStats{}, fmt.Errorf("no message supplied for query")
+	}
+	c.cfg.Logger.Debug("starting query with message", tele.LogAttrKey(msg.Target()), slog.String("type", msg.Type.String()))
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	if numResults < 1 {
+		numResults = 20 // TODO: parameterize
+	}
+
+	// This is a local lookup. TODO: Make sure it doesn't go through NearestNodesAsServer, only normal NearestNodes
+	seedIDs, err := c.GetClosestNodes(ctx, msg.Target(), numResults)
+	if err != nil {
+		return nil, coordt.QueryStats{}, err
+	}
+
+	waiter := NewQueryWaiter(numResults)
+	queryID := c.newOperationID()
+
+	// TODO: Generate a ciphertext message from plaintext msg
+	//  For routing, generate the ciphertext PIR request
+	//   using the target node's kadID and the plaintext msg
+	cmd := &EventStartMessageQuery{
+		QueryID:           queryID,
+		Target:            msg.Target(),
+		Message:           msg,
+		KnownClosestNodes: seedIDs,
+		Notify:            waiter,
+		NumResults:        numResults,
+	}
+
+	// queue the start of the query
+	c.queryBehaviour.Notify(ctx, cmd)
+
+	closest, stats, err := c.waitForQuery(ctx, queryID, waiter, fn)
+	return closest, stats, err
+}
+
 // QueryClosest starts a query that attempts to find the closest nodes to the target key.
 // It returns the closest nodes found to the target key and statistics on the actions of the query.
 //
