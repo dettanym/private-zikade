@@ -299,6 +299,7 @@ func (d *DHT) handlePrivateFindPeer(ctx context.Context, remote peer.ID, msg *pb
 	if err != nil {
 		return nil, err
 	}
+	println(encrypted_peer_ids)
 
 	// TODO Ask Gui: handleFindPeer also looks up peerStore directly for the target key and adds it to the closerPeers.
 	// This might be necessary as we may not store the node's (KadID, PeerID) if our bucket is full,
@@ -308,8 +309,8 @@ func (d *DHT) handlePrivateFindPeer(ctx context.Context, remote peer.ID, msg *pb
 	// can we "fill up" our RT with kadID, peerID of records that are in the peerStore but not in the RT?
 
 	pirResponse := &pb.PIR_Response{
-		Id:          pirRequest.Id,
-		CloserPeers: encrypted_peer_ids,
+		Id: pirRequest.Id,
+		// CloserPeers: encrypted_peer_ids,
 	}
 
 	response := &pb.Message{
@@ -339,6 +340,7 @@ func (d *DHT) handlePrivateGetProviderRecords(ctx context.Context, remote peer.I
 	if err != nil {
 		return nil, err
 	}
+	println(encrypted_closer_peers)
 
 	backend, ok := d.backends[namespaceProviders]
 	if !ok {
@@ -354,9 +356,10 @@ func (d *DHT) handlePrivateGetProviderRecords(ctx context.Context, remote peer.I
 	}
 
 	encrypted_provider_peers, err := private_routing.RunPIRforProviderPeersRecords(pirRequest, mapCIDtoProviderPeers)
+	println(encrypted_provider_peers)
 	pirResponse := &pb.PIR_Response{
-		Id:            pirRequest.Id,
-		CloserPeers:   encrypted_closer_peers,
+		Id: pirRequest.Id,
+		// CloserPeers:   encrypted_closer_peers,
 		ProviderPeers: encrypted_provider_peers,
 	}
 
