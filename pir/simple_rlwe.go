@@ -3,9 +3,6 @@ package private_routing
 import (
 	"encoding/binary"
 	"fmt"
-	"log"
-	"time"
-
 	"github.com/plprobelab/zikade/pb"
 	"github.com/tuneinsight/lattigo/v5/core/rlwe"
 	"github.com/tuneinsight/lattigo/v5/he/heint"
@@ -122,62 +119,63 @@ type PIR_Protocol_Simple_RLWE struct {
 }
 
 func (p *PIR_Protocol_Simple_RLWE) ProcessRequestAndReturnResponse(msg *pb.PIR_Protocol_Simple_RLWE_Request) (*pb.PIR_Protocol_Simple_RLWE_Response, error) {
-	start := time.Now()
-
-	// Set to the bytes of the query
-	query_struct_bytes := msg.Query
-
-	query := &Query{}
-	err := query.UnmarshalBinary(query_struct_bytes)
-	if err != nil {
-		return nil, err
-	}
-
-	params := query.parameters
-	evk := &query.evaluation_keys
-	encrypted_data := &query.encrypted_query
-
-	N := params.N()
-	evaluator := heint.NewEvaluator(params, evk)
-	encoder := heint.NewEncoder(params)
-
-	ciphertexts, err := evaluator.Expand(encrypted_data, 8, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	for i := 0; i < 256; i++ {
-
-		// this part is encoding the content of row i in the coefficients of a polynomial
-		// For now it's just random junk
-		// TODO: change this to encode the bytes of row i in the routing table
-		coeffs := make([]uint64, N)
-		for j := 0; j < int(N); j++ {
-			coeffs[j] = uint64((j * (i + 5) * i) % int(params.PlaintextModulus()))
-		}
-		poly_pt := heint.NewPlaintext(params, params.MaxLevel())
-		poly_pt.MetaData.IsBatched = false
-		encoder.Encode(coeffs, poly_pt)
-		///
-
-		if i == 0 {
-			evaluator.Mul(ciphertexts[i], poly_pt, ciphertexts[i])
-		} else {
-			evaluator.MulThenAdd(ciphertexts[i], poly_pt, ciphertexts[0])
-		}
-	}
-
-	var response_bytes []byte
-	// println("Response:", ciphertexts[0].BinarySize()/1024, "KB")
-	response_bytes, err = ciphertexts[0].MarshalBinary()
-	if err != nil {
-		return nil, err
-	}
-	elapsed := time.Since(start)
-	log.Printf("elapsed time: %v", elapsed)
-
-	return &pb.PIR_Protocol_Simple_RLWE_Response{
-		Response: response_bytes,
-	}, nil
+	return nil, nil
+	//start := time.Now()
+	//
+	//// Set to the bytes of the query
+	//query_struct_bytes := msg.Query
+	//
+	//query := &Query{}
+	//err := query.UnmarshalBinary(query_struct_bytes)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
+	//params := query.parameters
+	//evk := &query.evaluation_keys
+	//encrypted_data := &query.encrypted_query
+	//
+	//N := params.N()
+	//evaluator := heint.NewEvaluator(params, evk)
+	//encoder := heint.NewEncoder(params)
+	//
+	//ciphertexts, err := evaluator.Expand(encrypted_data, 8, 0)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
+	//for i := 0; i < 256; i++ {
+	//
+	//	// this part is encoding the content of row i in the coefficients of a polynomial
+	//	// For now it's just random junk
+	//	// TODO: change this to encode the bytes of row i in the routing table
+	//	coeffs := make([]uint64, N)
+	//	for j := 0; j < int(N); j++ {
+	//		coeffs[j] = uint64((j * (i + 5) * i) % int(params.PlaintextModulus()))
+	//	}
+	//	poly_pt := heint.NewPlaintext(params, params.MaxLevel())
+	//	poly_pt.MetaData.IsBatched = false
+	//	encoder.Encode(coeffs, poly_pt)
+	//	///
+	//
+	//	if i == 0 {
+	//		evaluator.Mul(ciphertexts[i], poly_pt, ciphertexts[i])
+	//	} else {
+	//		evaluator.MulThenAdd(ciphertexts[i], poly_pt, ciphertexts[0])
+	//	}
+	//}
+	//
+	//var response_bytes []byte
+	//// println("Response:", ciphertexts[0].BinarySize()/1024, "KB")
+	//response_bytes, err = ciphertexts[0].MarshalBinary()
+	//if err != nil {
+	//	return nil, err
+	//}
+	//elapsed := time.Since(start)
+	//log.Printf("elapsed time: %v", elapsed)
+	//
+	//return &pb.PIR_Protocol_Simple_RLWE_Response{
+	//	Response: response_bytes,
+	//}, nil
 
 }
