@@ -7,15 +7,71 @@ import (
 	"math"
 	"time"
 
+	"github.com/plprobelab/zikade/pb"
 	"github.com/tuneinsight/lattigo/v5/core/rlwe"
 	"github.com/tuneinsight/lattigo/v5/he/heint"
-	"github.com/tuneinsight/lattigo/v5/utils/structs"
 )
 
 type SimpleRLWEPIRQuery struct {
 	parameters      heint.Parameters
 	evaluation_keys rlwe.MemEvaluationKeySet
 	encrypted_query rlwe.Ciphertext
+}
+
+func (q *SimpleRLWEPIRQuery) MarshalRequestToPB() (*pb.PIR_SimpleRLWE_Request, error) {
+	params_bytes, err := q.parameters.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	evk_bytes, err := q.evaluation_keys.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	query_bytes, err := q.encrypted_query.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+
+	pirRequest := pb.PIR_SimpleRLWE_Request{
+		Parameters: params_bytes,
+		OneOfParameters: &pb.PIR_SimpleRLWE_Request_EvaluationKeys{
+			EvaluationKeys: evk_bytes,
+		},
+		EncryptedQuery: query_bytes,
+	}
+
+	return &pirRequest, nil
+}
+
+func (q *SimpleRLWEPIRQuery) UnmarshallRequestFromPB(req *pb.PIR_SimpleRLWE_Request) error {
+	err := q.parameters.UnmarshalBinary(req.GetParameters())
+	if err != nil {
+		return fmt.Errorf("error unmarshalling parameter bytes")
+	}
+
+	err = q.encrypted_query.UnmarshalBinary(req.GetEncryptedQuery())
+	if err != nil {
+		return fmt.Errorf("error unmarshalling encrypted query bytes")
+	}
+
+	switch opt_param_type := req.OneOfParameters.(type) {
+	case *pb.PIR_SimpleRLWE_Request_EvaluationKeys:
+		evaluation_keys_bytes := opt_param_type.EvaluationKeys
+		println("OptionalParameters is set to EV Keys")
+		err = q.evaluation_keys.UnmarshalBinary(evaluation_keys_bytes)
+		if err != nil {
+			return fmt.Errorf("error unmarshalling evaluation key bytes")
+		}
+	case *pb.PIR_SimpleRLWE_Request_OtherKeys:
+		other_keys_bytes := opt_param_type.OtherKeys
+		println("OptionalParameters is set to other keys", other_keys_bytes)
+	case nil:
+		return fmt.Errorf("unmarshalling request from PB: need one of EV Keys or Random lol")
+	default:
+		return fmt.Errorf("unmarshalling request from PB: req.OptionalParameters has unexpected type %T", opt_param_type)
+	}
+
+	return nil
 }
 
 func (q *SimpleRLWEPIRQuery) MarshalBinary() ([]byte, error) {
@@ -110,14 +166,14 @@ type PIR_Protocol interface {
 type PIR_Protocol_Simple_RLWE struct {
 }
 
-func (p *PIR_Protocol_Simple_RLWE) ProcessRequestAndReturnResponse(query_bytes []byte, database [][]byte) ([]byte, error) {
+func ProcessRequestAndReturnResponse(request *pb.PIR_SimpleRLWE_Request, database [][]byte) (*pb.PIR_SimpleRLWE_Response, error) {
 
 	start := time.Now()
 
 	// Set to the bytes of the query
 
 	query := &SimpleRLWEPIRQuery{}
-	err := query.UnmarshalBinary(query_bytes)
+	err := query.UnmarshallRequestFromPB(request)
 	if err != nil {
 		return nil, err
 	}
@@ -173,15 +229,26 @@ func (p *PIR_Protocol_Simple_RLWE) ProcessRequestAndReturnResponse(query_bytes [
 		}
 	}
 
-	// println("Response:", ciphertexts[0].BinarySize()/1024, "KB")
-	response_bytes, err := structs.Vector[rlwe.Ciphertext](response_ciphertexts).MarshalBinary()
-	if err != nil {
-		return nil, err
-	}
+	//// println("Response:", ciphertexts[0].BinarySize()/1024, "KB")
+	//response_bytes, err := structs.Vector[rlwe.Ciphertext](response_ciphertexts).MarshalBinary()
+	//if err != nil {
+	//	return nil, err
+	//}
 	// return response_bytes
+
+	ctBytesArray := make([][]byte, len(response_ciphertexts))
+	for i, ct := range response_ciphertexts {
+		ctBytes, err := ct.MarshalBinary()
+		if err != nil {
+			return nil, fmt.Errorf("error marshalling %dth ciphertext. Error: %s", i, err)
+		}
+		ctBytesArray[i] = ctBytes
+	}
+	response := &pb.PIR_SimpleRLWE_Response{Ciphertexts: ctBytesArray}
+
 	elapsed := time.Since(start)
 	log.Printf("elapsed time: %v", elapsed)
 
-	return response_bytes, nil
+	return response, nil
 
 }
