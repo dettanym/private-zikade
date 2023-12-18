@@ -1,4 +1,4 @@
-package private_routing
+package pir
 
 import (
 	"encoding/binary"

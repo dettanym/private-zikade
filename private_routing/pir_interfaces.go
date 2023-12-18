@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/plprobelab/zikade/pb"
-	pir "github.com/plprobelab/zikade/pir"
+	"github.com/plprobelab/zikade/pir"
 )
 
 func RunPIRforCloserPeersRecords(req *pb.PIR_Request, ModifiedRT [][]byte) (*pb.PIR_Response, error) {
