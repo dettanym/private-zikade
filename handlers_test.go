@@ -1522,3 +1522,37 @@ func printCloserPeers(resp *pb.Message) {
 func TestDHT_normalizeRTJoinedWithPeerStore(t *testing.T) {
 
 }
+
+func setupFindPeer_happy_path(d *DHT, t *testing.T) []peer.ID {
+	// build routing table
+	peers := make([]peer.ID, 250)
+	for i := 0; i < 250; i++ {
+		// generate peer ID
+		pid := newPeerID(t)
+		// println(pid.String())
+
+		// add peer to routing table but don't add first peer. The first peer
+		// will be the one who's making the request below. If we added it to
+		// the routing table it could be among the closest peers to the random
+		// key below. We filter out the requesting peer from the response of
+		// closer peers. This means we can't assert for exactly 20 closer peers
+		// below.
+		if i > 0 {
+			d.rt.AddNode(kadt.PeerID(pid))
+		}
+
+		// keep track of peer
+		peers[i] = pid
+
+		// craft network address for peer
+		a, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", 2000+i))
+		require.NoError(t, err)
+
+		// add peer information to peer store
+		d.host.Peerstore().AddAddr(pid, a, time.Hour)
+	}
+	assert.Equal(t, len(peers), d.host.Peerstore().PeersWithAddrs().Len())
+	printCPLAndBucketSizes(d, peers)
+
+	return peers
+}
