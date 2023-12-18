@@ -3,6 +3,7 @@ package zikade
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"reflect"
@@ -1483,4 +1484,37 @@ func TestDHT_normalizeRTJoinedWithPeerStore(t *testing.T) {
 		//  are the same as the ones retrieved from d.host.Peerstore().
 		resp.Reset()
 	}
+}
+
+func TestDHT_handlePrivateFindPeer(t *testing.T) {
+	d := newTestDHT(t)
+
+	peers := fillRoutingTable(t, d, 250)
+
+	// TODO: What should be the length of the PIR request?
+	pirRequest := make([]byte, 1024)
+	read, err := rand.Read(pirRequest)
+	require.NoError(t, err)
+	require.Equal(t, read, len(pirRequest))
+
+	req := &pb.Message{
+		Type: pb.Message_PRIVATE_FIND_NODE,
+		EncryptedQuery: &pb.PIR_Request{
+			Id:                []byte("random-id"),
+			CloserPirQuery:    pirRequest,
+			ProviderPeerQuery: nil,
+		},
+	}
+
+	resp, err := d.handlePrivateFindPeer(context.Background(), peers[0], req)
+	require.NoError(t, err)
+
+	assert.Equal(t, pb.Message_PRIVATE_FIND_NODE, resp.Type)
+	//assert.Nil(t, resp.Record)
+	//assert.Equal(t, req.Key, resp.Key)
+	//assert.Len(t, resp.CloserPeers, d.cfg.BucketSize)
+	//assert.Len(t, resp.ProviderPeers, 0)
+	//assert.Equal(t, len(resp.CloserPeers[0].Addrs), 1)
+	//printCloserPeers(resp)
+
 }
