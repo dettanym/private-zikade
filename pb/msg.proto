@@ -81,15 +81,28 @@ message Message {
 // Does not correspond to any keys in the Kademlia ID or peer ID spaces.
 message PIR_Request {
 	bytes id = 1;
-	
-	bytes closer_pir_query = 2;
+
+  PIR_SimpleRLWE_Request closer_pir_query = 2;
 	bytes provider_peer_query = 3;
 }
 
 message PIR_Response {
 	bytes id = 1;
-	
-	bytes closer_peers = 2;
+
+  PIR_SimpleRLWE_Response closer_peers = 2;
 	bytes provider_peers = 3;
 	
+}
+
+message PIR_SimpleRLWE_Request {
+    bytes parameters = 1;
+    oneof OneOfParameters {
+      bytes evaluation_keys = 10;
+      bytes other_keys = 21;
+    }
+    bytes encrypted_query = 3;
+}
+
+message PIR_SimpleRLWE_Response {
+  repeated bytes ciphertexts = 1;
 }
