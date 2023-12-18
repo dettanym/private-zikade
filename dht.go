@@ -79,6 +79,7 @@ func New(h host.Host, cfg *Config) (*DHT, error) {
 	}
 
 	nid := kadt.PeerID(d.host.ID())
+	println("My peer ID: ", d.host.ID().String())
 
 	// Use the configured routing table if it was provided
 	if cfg.RoutingTable != nil {
