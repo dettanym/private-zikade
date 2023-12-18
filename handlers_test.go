@@ -96,8 +96,23 @@ func BenchmarkDHT_handleFindPeer(b *testing.B) {
 func TestDHT_handleFindPeer_happy_path(t *testing.T) {
 	d := newTestDHT(t)
 
-	peers := setupFindPeer_happy_path(d, t)
-	assert.Equal(t, len(peers), d.host.Peerstore().PeersWithAddrs().Len())
+	// add peer to routing table but don't add first peer. The first peer
+	// will be the one who's making the request below. If we added it to
+	// the routing table it could be among the closest peers to the random
+	// key below. We filter out the requesting peer from the response of
+	// closer peers. This means we can't assert for exactly 20 closer peers
+	// below.
+	pid := newPeerID(t)
+	queryingPeer := pid
+
+	a, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", 2000))
+	require.NoError(t, err)
+
+	d.host.Peerstore().AddAddr(pid, a, time.Hour)
+
+	peers := fillRoutingTable(t, d, 249)
+
+	assert.Equal(t, len(peers)+1, d.host.Peerstore().PeersWithAddrs().Len())
 	printCPLAndBucketSizes(d, peers)
 
 	req := &pb.Message{
@@ -105,7 +120,7 @@ func TestDHT_handleFindPeer_happy_path(t *testing.T) {
 		Key:  []byte("random-key"),
 	}
 
-	resp, err := d.handleFindPeer(context.Background(), peers[0], req)
+	resp, err := d.handleFindPeer(context.Background(), queryingPeer, req)
 	require.NoError(t, err)
 
 	assert.Equal(t, pb.Message_FIND_NODE, resp.Type)
@@ -1447,7 +1462,7 @@ func TestDHT_handleGetProviders_only_serve_filtered_addresses(t *testing.T) {
 func TestDHT_normalizeRTJoinedWithPeerStore(t *testing.T) {
 	d := newTestDHT(t)
 
-	peers := setupFindPeer_happy_path(d, t)
+	peers := fillRoutingTable(t, d, 250)
 
 	normalizedRT, err := d.NormalizeRTJoinedWithPeerStore(kadt.PeerID(peers[0]).Key())
 	require.NoError(t, err)
