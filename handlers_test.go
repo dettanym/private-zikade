@@ -1491,7 +1491,29 @@ func printCloserPeers(resp *pb.Message) {
 }
 
 func TestDHT_normalizeRTJoinedWithPeerStore(t *testing.T) {
+	d := newTestDHT(t)
 
+	peers := setupFindPeer_happy_path(d, t)
+
+	normalizedRT, err := d.NormalizeRTJoinedWithPeerStore(kadt.PeerID(peers[0]).Key())
+	require.NoError(t, err)
+
+	resp := &pb.Message{
+		CloserPeers: nil,
+	}
+
+	for _, marshalledBucket := range normalizedRT {
+		err := proto.Unmarshal(marshalledBucket, resp)
+		require.NoError(t, err)
+
+		assert.Len(t, resp.CloserPeers, d.cfg.BucketSize)
+		assert.Len(t, resp.ProviderPeers, 0)
+		assert.Equal(t, len(resp.CloserPeers[0].Addrs), 1)
+
+		// TODO: Check semantic correctness: that the addrInfo(s) for each peer
+		//  are the same as the ones retrieved from d.host.Peerstore().
+		resp.Reset()
+	}
 }
 
 func setupFindPeer_happy_path(d *DHT, t *testing.T) []peer.ID {

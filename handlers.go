@@ -291,7 +291,7 @@ func (d *DHT) handlePrivateFindPeer(ctx context.Context, remote peer.ID, msg *pb
 		return nil, fmt.Errorf("no PIR Request sent in the message")
 	}
 
-	bucketsWithAddrInfos, err := d.normalizeRTJoinedWithPeerStore(kadt.PeerID(remote).Key())
+	bucketsWithAddrInfos, err := d.NormalizeRTJoinedWithPeerStore(kadt.PeerID(remote).Key())
 	if err != nil {
 		return nil, fmt.Errorf("could not form normalized, joined routing table to run PIR request over")
 	}
@@ -327,7 +327,7 @@ func (d *DHT) handlePrivateGetProviderRecords(ctx context.Context, remote peer.I
 		return nil, fmt.Errorf("no PIR Request sent in the message")
 	}
 
-	bucketsWithAddrInfos, err := d.normalizeRTJoinedWithPeerStore(kadt.PeerID(remote).Key())
+	bucketsWithAddrInfos, err := d.NormalizeRTJoinedWithPeerStore(kadt.PeerID(remote).Key())
 	if err != nil {
 		return nil, fmt.Errorf("could not form normalized, joined routing table to run PIR request over")
 	}
@@ -372,7 +372,7 @@ func (d *DHT) handlePrivateGetProviderRecords(ctx context.Context, remote peer.I
 // The (normalized) RT consists of <kad ID, peer ID> records.
 // The d.host.Peerstore() consists of <peer ID, peer address> records.
 // We then join these key-value stores here, oblivious to the target.
-func (d *DHT) normalizeRTJoinedWithPeerStore(queryingPeerKadId kadt.Key) ([][]byte, error) {
+func (d *DHT) NormalizeRTJoinedWithPeerStore(queryingPeerKadId kadt.Key) ([][]byte, error) {
 	// TODO: How to extend this function to provide the functionality in Line 52 in handleFindPeer
 	//  obliviously to the target key.
 	// Line 52 in handleFindPeer looks up the peerstore with the target kademlia ID,
