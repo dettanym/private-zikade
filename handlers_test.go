@@ -3,9 +3,9 @@ package zikade
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
 	"errors"
 	"fmt"
+	"github.com/plprobelab/zikade/pir"
 	"reflect"
 	"strconv"
 	"sync"
@@ -1491,11 +1491,8 @@ func TestDHT_handlePrivateFindPeer(t *testing.T) {
 
 	peers := fillRoutingTable(t, d, 250)
 
-	// TODO: What should be the length of the PIR request?
-	pirRequest := make([]byte, 1024)
-	read, err := rand.Read(pirRequest)
+	pirRequest, err := pir.GeneratePIRRequest()
 	require.NoError(t, err)
-	require.Equal(t, read, len(pirRequest))
 
 	req := &pb.Message{
 		Type: pb.Message_PRIVATE_FIND_NODE,
