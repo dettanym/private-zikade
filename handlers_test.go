@@ -101,6 +101,7 @@ func TestDHT_handleFindPeer_happy_path(t *testing.T) {
 	for i := 0; i < 250; i++ {
 		// generate peer ID
 		pid := newPeerID(t)
+		// println(pid.String())
 
 		// add peer to routing table but don't add first peer. The first peer
 		// will be the one who's making the request below. If we added it to
@@ -122,6 +123,8 @@ func TestDHT_handleFindPeer_happy_path(t *testing.T) {
 		// add peer information to peer store
 		d.host.Peerstore().AddAddr(pid, a, time.Hour)
 	}
+	assert.Equal(t, len(peers), d.host.Peerstore().PeersWithAddrs().Len())
+	printCPLAndBucketSizes(d, peers)
 
 	req := &pb.Message{
 		Type: pb.Message_FIND_NODE,
@@ -137,6 +140,7 @@ func TestDHT_handleFindPeer_happy_path(t *testing.T) {
 	assert.Len(t, resp.CloserPeers, d.cfg.BucketSize)
 	assert.Len(t, resp.ProviderPeers, 0)
 	assert.Equal(t, len(resp.CloserPeers[0].Addrs), 1)
+	printCloserPeers(resp)
 }
 
 func TestDHT_handleFindPeer_self_in_routing_table(t *testing.T) {
@@ -1464,4 +1468,57 @@ func TestDHT_handleGetProviders_only_serve_filtered_addresses(t *testing.T) {
 	maddrs := res.ProviderPeers[0].Addresses()
 	require.Len(t, maddrs, 1)
 	assert.True(t, maddrs[0].Equal(testMaddr))
+}
+
+func printCPLAndBucketSizes(d *DHT, peers []peer.ID) {
+	actualCPLs := make([]int, 256)
+	for i := 0; i < len(peers); i++ {
+		cpl := d.rt.Cpl(kadt.PeerID(peers[i]).Key())
+		actualCPLs[cpl] = actualCPLs[cpl] + 1
+	}
+
+	println("Common prefix lengths: ")
+	for i := 0; i < len(actualCPLs); i++ {
+		print(actualCPLs[i], ",")
+	}
+
+	println("\nBucket lengths: ")
+	prevBucketSize := -1
+	totalNumberOfEntriesInRT := 0
+
+	for i := 0; i < len(peers); i++ {
+		givenBucketSize := d.rt.CplSize(i)
+		if givenBucketSize == prevBucketSize && givenBucketSize < d.cfg.BucketSize {
+			print("Last bucket ID in the RT with # of elements: ", givenBucketSize)
+			break
+		} else {
+			print(givenBucketSize, ",")
+			totalNumberOfEntriesInRT += givenBucketSize
+		}
+		prevBucketSize = givenBucketSize
+	}
+
+	println("\nTotal number of entries in RT:", totalNumberOfEntriesInRT,
+		"\nTotal number of peers inserted:", len(peers),
+		"\nNumber of entries not inserted into RT:", len(peers)-totalNumberOfEntriesInRT)
+}
+
+func printCloserPeers(resp *pb.Message) {
+	closerPeers := resp.CloserPeers
+	for _, val := range closerPeers {
+		fromBytes, err := peer.IDFromBytes(val.GetId())
+		if err != nil {
+			return
+		}
+		println(fromBytes.String())
+		addrs := val.GetAddrs()
+		for _, addr := range addrs {
+			println(ma.Cast(addr).String())
+		}
+		// println(val.GetConnection().String())
+	}
+}
+
+func TestDHT_normalizeRTJoinedWithPeerStore(t *testing.T) {
+
 }
