@@ -400,15 +400,15 @@ func (d *DHT) NormalizeRTJoinedWithPeerStore(queryingPeerKadId kadt.Key) ([][]by
 	bucketsWithPeerIDs := d.rt.NormalizeRT(queryingPeerKadId)
 
 	// Bucket -> <Peer ID -> multiaddress array
-	bucketsWithAddrInfos := make([][]byte, 0, len(bucketsWithPeerIDs))
+	bucketsWithAddrInfos := make([][]byte, len(bucketsWithPeerIDs))
 
 	// Bucket -> <Peer ID and multiaddress array>
 	for bid, bucket := range bucketsWithPeerIDs {
-		addrInfos := make([]*pb.Message_Peer, 0, len(bucket))
-		for _, peerID := range bucket {
+		addrInfos := make([]*pb.Message_Peer, len(bucket))
+		for i, peerID := range bucket {
 			peerInfo := d.host.Peerstore().PeerInfo(peer.ID(peerID))
 			messagePeer := pb.FromAddrInfo(peerInfo)
-			addrInfos = append(addrInfos, messagePeer)
+			addrInfos[i] = messagePeer
 		}
 		mesg := &pb.Message{
 			CloserPeers: addrInfos,
