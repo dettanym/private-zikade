@@ -97,6 +97,9 @@ func TestDHT_handleFindPeer_happy_path(t *testing.T) {
 	d := newTestDHT(t)
 
 	peers := setupFindPeer_happy_path(d, t)
+	assert.Equal(t, len(peers), d.host.Peerstore().PeersWithAddrs().Len())
+	printCPLAndBucketSizes(d, peers)
+
 	req := &pb.Message{
 		Type: pb.Message_FIND_NODE,
 		Key:  []byte("random-key"),
@@ -1441,55 +1444,6 @@ func TestDHT_handleGetProviders_only_serve_filtered_addresses(t *testing.T) {
 	assert.True(t, maddrs[0].Equal(testMaddr))
 }
 
-func printCPLAndBucketSizes(d *DHT, peers []peer.ID) {
-	actualCPLs := make([]int, 256)
-	for i := 0; i < len(peers); i++ {
-		cpl := d.rt.Cpl(kadt.PeerID(peers[i]).Key())
-		actualCPLs[cpl] = actualCPLs[cpl] + 1
-	}
-
-	println("Common prefix lengths: ")
-	for i := 0; i < len(actualCPLs); i++ {
-		print(actualCPLs[i], ",")
-	}
-
-	println("\nBucket lengths: ")
-	prevBucketSize := -1
-	totalNumberOfEntriesInRT := 0
-
-	for i := 0; i < len(peers); i++ {
-		givenBucketSize := d.rt.CplSize(i)
-		if givenBucketSize == prevBucketSize && givenBucketSize < d.cfg.BucketSize {
-			print("Last bucket ID in the RT with # of elements: ", givenBucketSize)
-			break
-		} else {
-			print(givenBucketSize, ",")
-			totalNumberOfEntriesInRT += givenBucketSize
-		}
-		prevBucketSize = givenBucketSize
-	}
-
-	println("\nTotal number of entries in RT:", totalNumberOfEntriesInRT,
-		"\nTotal number of peers inserted:", len(peers),
-		"\nNumber of entries not inserted into RT:", len(peers)-totalNumberOfEntriesInRT)
-}
-
-func printCloserPeers(resp *pb.Message) {
-	closerPeers := resp.CloserPeers
-	for _, val := range closerPeers {
-		fromBytes, err := peer.IDFromBytes(val.GetId())
-		if err != nil {
-			return
-		}
-		println(fromBytes.String())
-		addrs := val.GetAddrs()
-		for _, addr := range addrs {
-			println(ma.Cast(addr).String())
-		}
-		// println(val.GetConnection().String())
-	}
-}
-
 func TestDHT_normalizeRTJoinedWithPeerStore(t *testing.T) {
 	d := newTestDHT(t)
 
@@ -1514,38 +1468,4 @@ func TestDHT_normalizeRTJoinedWithPeerStore(t *testing.T) {
 		//  are the same as the ones retrieved from d.host.Peerstore().
 		resp.Reset()
 	}
-}
-
-func setupFindPeer_happy_path(d *DHT, t *testing.T) []peer.ID {
-	// build routing table
-	peers := make([]peer.ID, 250)
-	for i := 0; i < 250; i++ {
-		// generate peer ID
-		pid := newPeerID(t)
-		// println(pid.String())
-
-		// add peer to routing table but don't add first peer. The first peer
-		// will be the one who's making the request below. If we added it to
-		// the routing table it could be among the closest peers to the random
-		// key below. We filter out the requesting peer from the response of
-		// closer peers. This means we can't assert for exactly 20 closer peers
-		// below.
-		if i > 0 {
-			d.rt.AddNode(kadt.PeerID(pid))
-		}
-
-		// keep track of peer
-		peers[i] = pid
-
-		// craft network address for peer
-		a, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", 2000+i))
-		require.NoError(t, err)
-
-		// add peer information to peer store
-		d.host.Peerstore().AddAddr(pid, a, time.Hour)
-	}
-	assert.Equal(t, len(peers), d.host.Peerstore().PeersWithAddrs().Len())
-	printCPLAndBucketSizes(d, peers)
-
-	return peers
 }
