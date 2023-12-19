@@ -212,8 +212,6 @@ func (rlweStruct *SimpleRLWEPIR) ProcessRequestAndReturnResponse(request *pb.PIR
 
 	start := time.Now()
 
-	// Set to the bytes of the rlweStruct
-
 	err := rlweStruct.UnmarshallRequestFromPB(request)
 	if err != nil {
 		return nil, err
@@ -245,15 +243,19 @@ func (rlweStruct *SimpleRLWEPIR) ProcessRequestAndReturnResponse(request *pb.PIR
 	for k := 0; k < number_of_response_ciphertexts; k++ {
 		for i := 0; i < num_rows; i++ {
 			// this part is encoding the content of row i in the coefficients of a polynomial
-			// TODO: change this to encode the bytes of row i in the routing table
+			// TODO: change this to encode the bytes of row i in the input database
 			coeffs := make([]uint64, N)
 			for j := 0; j < N; j++ {
 				start_index := bytes_per_ciphertext*k + bytes_per_coefficient*j
+				// TODO: @Rasoul confirm that this LittleEndian reference has nothing to do with the LittleEndian reference in your UnmarshallBinary() function.
 				coeffs[j] = binary.LittleEndian.Uint64(database[i][start_index : start_index+bytes_per_coefficient])
 			}
 			row_data_plaintext := heint.NewPlaintext(params, params.MaxLevel())
 			row_data_plaintext.IsBatched = false
-			encoder.Encode(coeffs, row_data_plaintext)
+			err := encoder.Encode(coeffs, row_data_plaintext)
+			if err != nil {
+				return nil, fmt.Errorf("could not encode a row of plaintext data %s", err)
+			}
 			///
 
 			// We accumulate the results in the first cipertext so we don't require the
@@ -261,11 +263,14 @@ func (rlweStruct *SimpleRLWEPIR) ProcessRequestAndReturnResponse(request *pb.PIR
 			if i == 0 {
 				tmp, err := evaluator.MulNew(indicator_bits[i], row_data_plaintext)
 				if err != nil {
-					panic(err)
+					return nil, fmt.Errorf("MulNew failed. Check function description for conditions leading to errors. Error: %s", err)
 				}
 				rlweStruct.response_ciphertexts[k] = *tmp
 			} else {
-				evaluator.MulThenAdd(indicator_bits[i], row_data_plaintext, &rlweStruct.response_ciphertexts[k])
+				err := evaluator.MulThenAdd(indicator_bits[i], row_data_plaintext, &rlweStruct.response_ciphertexts[k])
+				if err != nil {
+					return nil, fmt.Errorf("MulThenAdd failed. Check function description for conditions leading to errors. Error: %s", err)
+				}
 			}
 		}
 	}
