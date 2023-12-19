@@ -93,5 +93,5 @@ message PIR_Request {
 }
 
 message PIR_Response {
-  repeated bytes ciphertexts = 1;
+  bytes ciphertexts = 1;
 }

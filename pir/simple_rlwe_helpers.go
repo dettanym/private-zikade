@@ -2,10 +2,12 @@ package pir
 
 import (
 	"fmt"
+
 	"github.com/plprobelab/zikade/pb"
 	"github.com/tuneinsight/lattigo/v5/core/rlwe"
 	"github.com/tuneinsight/lattigo/v5/he/heint"
 	"github.com/tuneinsight/lattigo/v5/utils/sampling"
+	"github.com/tuneinsight/lattigo/v5/utils/structs"
 )
 
 // From https://github.com/tuneinsight/lattigo/blob/master/schemes/bgv/examples_parameters.go
@@ -32,7 +34,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) sampleGenerateParameters() (heint.Par
 	return literal, nil
 }
 
-func (rlweStruct *SimpleRLWE_PIR_Protocol) sampleGenerateRLWECiphertext() (*rlwe.Ciphertext, error) {
+func (rlweStruct *SimpleRLWE_PIR_Protocol) sampleGenerateRLWECiphertextVector() ([]rlwe.Ciphertext, error) {
 	prng, err := sampling.NewPRNG()
 	if err != nil {
 		return nil, err
@@ -47,7 +49,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) sampleGenerateRLWECiphertext() (*rlwe
 	//  https://github.com/tuneinsight/lattigo/blob/master/he/heint/heint_benchmark_test.go#L244
 	//   Set them meaningfully.
 	ct := rlwe.NewCiphertextRandom(prng, params, 1, params.MaxLevel())
-	return ct, nil
+	return []rlwe.Ciphertext{*ct}, nil
 }
 
 func (rlweStruct *SimpleRLWE_PIR_Protocol) sampleGenerateEvaluationKeys() (*rlwe.MemEvaluationKeySet, error) {
@@ -82,12 +84,12 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) SampleGeneratePIRRequest() (*pb.PIR_R
 		return nil, err
 	}
 
-	ciphertext, err := rlweStruct.sampleGenerateRLWECiphertext()
+	ciphertext, err := rlweStruct.sampleGenerateRLWECiphertextVector()
 	if err != nil {
 		return nil, err
 	}
 
-	ciphertextBinary, err := ciphertext.MarshalBinary()
+	ciphertextBinary, err := structs.Vector[rlwe.Ciphertext](ciphertext).MarshalBinary()
 	if err != nil {
 		return nil, err
 	}

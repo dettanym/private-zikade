@@ -10,13 +10,14 @@ import (
 	"github.com/plprobelab/zikade/pb"
 	"github.com/tuneinsight/lattigo/v5/core/rlwe"
 	"github.com/tuneinsight/lattigo/v5/he/heint"
+	"github.com/tuneinsight/lattigo/v5/utils/structs"
 )
 
 type SimpleRLWE_PIR_Protocol struct {
 	PIR_Protocol
 	parameters           heint.Parameters
 	evaluation_keys      *rlwe.MemEvaluationKeySet
-	encrypted_query      *rlwe.Ciphertext
+	encrypted_query      []rlwe.Ciphertext
 	response_ciphertexts []rlwe.Ciphertext
 }
 
@@ -29,7 +30,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) MarshalRequestToPB() (*pb.PIR_Request
 	if err != nil {
 		return nil, err
 	}
-	query_bytes, err := rlweStruct.encrypted_query.MarshalBinary()
+	query_bytes, err := structs.Vector[rlwe.Ciphertext](rlweStruct.encrypted_query).MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
@@ -51,10 +52,12 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) UnmarshallRequestFromPB(req *pb.PIR_R
 		return fmt.Errorf("error unmarshalling parameter bytes")
 	}
 
-	err = rlweStruct.encrypted_query.UnmarshalBinary(req.GetEncryptedQuery())
+	var encrypted_query structs.Vector[rlwe.Ciphertext]
+	err = encrypted_query.UnmarshalBinary(req.GetEncryptedQuery())
 	if err != nil {
 		return fmt.Errorf("error unmarshalling encrypted query bytes")
 	}
+	rlweStruct.encrypted_query = encrypted_query
 
 	switch schemeDependent := req.SchemeDependent.(type) {
 	case *pb.PIR_Request_RLWEEvaluationKeys:
@@ -77,27 +80,38 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) UnmarshallRequestFromPB(req *pb.PIR_R
 }
 
 func (rlweStruct *SimpleRLWE_PIR_Protocol) MarshalResponseToPB() (*pb.PIR_Response, error) {
-	ctBytesArray := make([][]byte, len(rlweStruct.response_ciphertexts))
-	for i, ct := range rlweStruct.response_ciphertexts {
-		ctBytes, err := ct.MarshalBinary()
-		if err != nil {
-			return nil, fmt.Errorf("error marshalling %dth ciphertext. Error: %s", i, err)
-		}
-		ctBytesArray[i] = ctBytes
+	// ctBytesArray := make([][]byte, len(rlweStruct.response_ciphertexts))
+	// for i, ct := range rlweStruct.response_ciphertexts {
+	// 	ctBytes, err := ct.MarshalBinary()
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("error marshalling %dth ciphertext. Error: %s", i, err)
+	// 	}
+	// 	ctBytesArray[i] = ctBytes
+	// }
+	// response := &pb.PIR_Response{Ciphertexts: ctBytesArray}
+	ciphertexts_bytes, err := structs.Vector[rlwe.Ciphertext](rlweStruct.response_ciphertexts).MarshalBinary()
+	if err != nil {
+		return nil, err
 	}
-	response := &pb.PIR_Response{Ciphertexts: ctBytesArray}
+	response := &pb.PIR_Response{Ciphertexts: ciphertexts_bytes}
 	return response, nil
 }
 
 func (rlweStruct *SimpleRLWE_PIR_Protocol) UnmarshalResponseFromPB(res *pb.PIR_Response) error {
-	ctBytesArray := res.GetCiphertexts()
-	rlweStruct.response_ciphertexts = make([]rlwe.Ciphertext, len(ctBytesArray))
-	for i, ctBytes := range ctBytesArray {
-		ct := rlweStruct.response_ciphertexts[i]
-		err := ct.UnmarshalBinary(ctBytes)
-		if err != nil {
-			return fmt.Errorf("error unmarshalling %dth ciphertext. Error: %s", i, err)
-		}
+	// ctBytesArray := res.GetCiphertexts()
+	// rlweStruct.response_ciphertexts = make([]rlwe.Ciphertext, len(ctBytesArray))
+	// for i, ctBytes := range ctBytesArray {
+	// 	ct := rlweStruct.response_ciphertexts[i]
+	// 	err := ct.UnmarshalBinary(ctBytes)
+	// 	if err != nil {
+	// 		return fmt.Errorf("error unmarshalling %dth ciphertext. Error: %s", i, err)
+	// 	}
+	// }
+	var response_encrypted structs.Vector[rlwe.Ciphertext]
+	err := response_encrypted.UnmarshalBinary(res.GetCiphertexts())
+	rlweStruct.response_ciphertexts = response_encrypted
+	if err != nil {
+		return err
 	}
 	return nil
 }
@@ -110,7 +124,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) GenerateRequestFromPlaintext(plaintex
 	}
 	rlweStruct.parameters = parameters
 
-	ciphertext, err := rlweStruct.sampleGenerateRLWECiphertext()
+	ciphertext, err := rlweStruct.sampleGenerateRLWECiphertextVector()
 	if err != nil {
 		return nil, err
 	}
@@ -137,89 +151,6 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessResponseToPlaintext(res *pb.PI
 	return nil, nil
 }
 
-func (rlweStruct *SimpleRLWE_PIR_Protocol) MarshalBinary() ([]byte, error) {
-	params_bytes, err := rlweStruct.parameters.MarshalBinary()
-	if err != nil {
-		return nil, err
-	}
-	evk_bytes, err := rlweStruct.evaluation_keys.MarshalBinary()
-	if err != nil {
-		return nil, err
-	}
-	query_bytes, err := rlweStruct.encrypted_query.MarshalBinary()
-	if err != nil {
-		return nil, err
-	}
-
-	// Calculate the total size: sum of all bytes plus 3 sizes (each 8 bytes)
-	totalSize := len(params_bytes) + len(evk_bytes) + len(query_bytes) + 3*8
-
-	// Allocate the byte slice
-	result := make([]byte, 0, totalSize)
-
-	// Helper function to append size and data
-	appendData := func(data []byte) {
-		size := uint64(len(data))
-		sizeBytes := make([]byte, 8)
-		binary.LittleEndian.PutUint64(sizeBytes, size)
-		result = append(result, sizeBytes...)
-		result = append(result, data...)
-	}
-
-	// Append data for each part
-	appendData(params_bytes)
-	appendData(evk_bytes)
-	appendData(query_bytes)
-
-	return result, nil
-}
-
-func (rlweStruct *SimpleRLWE_PIR_Protocol) UnmarshalBinary(data []byte) error {
-	// Helper function to read next byte slice
-	readNextBytes := func(data []byte) ([]byte, []byte, error) {
-		if len(data) < 8 {
-			return nil, nil, fmt.Errorf("data too short to contain size information")
-		}
-		size := binary.LittleEndian.Uint64(data[:8])
-		if uint64(len(data)) < 8+size {
-			return nil, nil, fmt.Errorf("data too short to contain expected byte slice")
-		}
-		return data[8 : 8+size], data[8+size:], nil
-	}
-
-	var err error
-
-	// Read params_bytes
-	params_bytes, data, err := readNextBytes(data)
-	if err != nil {
-		return err
-	}
-
-	// Read evk_bytes
-	evk_bytes, data, err := readNextBytes(data)
-	if err != nil {
-		return err
-	}
-
-	// Read query_bytes
-	query_bytes, _, err := readNextBytes(data)
-	if err != nil {
-		return err
-	}
-
-	if err := rlweStruct.parameters.UnmarshalBinary(params_bytes); err != nil {
-		return err
-	}
-	if err := rlweStruct.evaluation_keys.UnmarshalBinary(evk_bytes); err != nil {
-		return err
-	}
-	if err := rlweStruct.encrypted_query.UnmarshalBinary(query_bytes); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(request *pb.PIR_Request, database [][]byte) (*pb.PIR_Response, error) {
 
 	// TODO: Replace logging the time with Go Benchmarks
@@ -236,13 +167,20 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 	evaluation_keys := rlweStruct.evaluation_keys
 	encrypted_query := rlweStruct.encrypted_query
 
+	num_cts := len(encrypted_query)
+	log2_num_cts := int(math.Log2(float64(num_cts)))
+
 	N := params.N()
 	evaluator := heint.NewEvaluator(params, evaluation_keys)
 	encoder := heint.NewEncoder(params)
 
-	indicator_bits, err := evaluator.Expand(encrypted_query, log2_num_rows, 0)
-	if err != nil {
-		return nil, err
+	var indicator_bits []*rlwe.Ciphertext
+	for i := 0; i < len(encrypted_query); i++ {
+		indicator_bits_slice, err := evaluator.Expand(&encrypted_query[i], log2_num_rows-log2_num_cts, 0)
+		if err != nil {
+			return nil, err
+		}
+		indicator_bits = append(indicator_bits, indicator_bits_slice...)
 	}
 
 	num_rows := 1 << log2_num_rows
