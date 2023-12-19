@@ -198,13 +198,12 @@ type PIR_Protocol interface {
 type PIR_Protocol_Simple_RLWE struct {
 }
 
-func ProcessRequestAndReturnResponse(request *pb.PIR_Request, database [][]byte) (*pb.PIR_Response, error) {
+func (rlweStruct *SimpleRLWEPIR) ProcessRequestAndReturnResponse(request *pb.PIR_Request, database [][]byte) (*pb.PIR_Response, error) {
 
 	start := time.Now()
 
 	// Set to the bytes of the rlweStruct
 
-	rlweStruct := &SimpleRLWEPIR{}
 	err := rlweStruct.UnmarshallRequestFromPB(request)
 	if err != nil {
 		return nil, err
