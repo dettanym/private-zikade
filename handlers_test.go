@@ -1495,12 +1495,9 @@ func TestDHT_handlePrivateFindPeer(t *testing.T) {
 	require.NoError(t, err)
 
 	req := &pb.Message{
-		Type: pb.Message_PRIVATE_FIND_NODE,
-		EncryptedQuery: &pb.PIR_Request{
-			Id:                []byte("random-id"),
-			CloserPirQuery:    pirRequest,
-			ProviderPeerQuery: nil,
-		},
+		Type:               pb.Message_PRIVATE_FIND_NODE,
+		PIR_Message_ID:     1234,
+		CloserPeersRequest: pirRequest,
 	}
 
 	resp, err := d.handlePrivateFindPeer(context.Background(), peers[0], req)

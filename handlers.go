@@ -286,9 +286,9 @@ func (d *DHT) handlePrivateFindPeer(ctx context.Context, remote peer.ID, msg *pb
 	_, span := d.tele.Tracer.Start(ctx, "DHT.handlePrivateFindPeer", otel.WithAttributes(attribute.String("remote", remote.String())))
 	defer span.End()
 
-	pirRequest := msg.GetEncryptedQuery()
+	pirRequest := msg.GetCloserPeersRequest()
 	if pirRequest == nil {
-		return nil, fmt.Errorf("no PIR Request sent in the message")
+		return nil, fmt.Errorf("PIR Request for CloserPeers not sent in the message")
 	}
 
 	bucketsWithAddrInfos, err := d.NormalizeRTJoinedWithPeerStore(kadt.PeerID(remote).Key())
@@ -310,8 +310,9 @@ func (d *DHT) handlePrivateFindPeer(ctx context.Context, remote peer.ID, msg *pb
 	// can we "fill up" our RT with kadID, peerID of records that are in the peerStore but not in the RT?
 
 	response := &pb.Message{
-		Type:             pb.Message_PRIVATE_FIND_NODE,
-		EncryptedRecords: pirResponse,
+		Type:                pb.Message_PRIVATE_FIND_NODE,
+		PIR_Message_ID:      msg.PIR_Message_ID,
+		CloserPeersResponse: pirResponse,
 	}
 
 	return response, nil
@@ -322,9 +323,9 @@ func (d *DHT) handlePrivateGetProviderRecords(ctx context.Context, remote peer.I
 	_, span := d.tele.Tracer.Start(ctx, "DHT.handlePrivateGetProviderRecords", otel.WithAttributes(attribute.String("remote", remote.String())))
 	defer span.End()
 
-	pirRequest := msg.GetEncryptedQuery()
+	pirRequest := msg.GetProviderPeersRequest()
 	if pirRequest == nil {
-		return nil, fmt.Errorf("no PIR Request sent in the message")
+		return nil, fmt.Errorf("PIR Request for Provider Peers not sent in the message")
 	}
 
 	bucketsWithAddrInfos, err := d.NormalizeRTJoinedWithPeerStore(kadt.PeerID(remote).Key())
@@ -332,11 +333,10 @@ func (d *DHT) handlePrivateGetProviderRecords(ctx context.Context, remote peer.I
 		return nil, fmt.Errorf("could not form normalized, joined routing table to run PIR request over")
 	}
 
-	encrypted_closer_peers, err := private_routing.RunPIRforCloserPeersRecords(pirRequest, bucketsWithAddrInfos)
+	closerPeersResponse, err := private_routing.RunPIRforCloserPeersRecords(pirRequest, bucketsWithAddrInfos)
 	if err != nil {
 		return nil, err
 	}
-	println(encrypted_closer_peers)
 
 	backend, ok := d.backends[namespaceProviders]
 	if !ok {
@@ -351,17 +351,13 @@ func (d *DHT) handlePrivateGetProviderRecords(ctx context.Context, remote peer.I
 		return nil, fmt.Errorf("could not construct a map of CIDs to provider peers for PIR")
 	}
 
-	pirResponse, err := private_routing.RunPIRforProviderPeersRecords(pirRequest, mapCIDtoProviderPeers)
-	// println(encrypted_provider_peers)
-	// pirResponse := &pb.PIR_Response{
-	// 	Id:            pirRequest.Id,
-	// 	CloserPeers:   encrypted_closer_peers,
-	// 	ProviderPeers: encrypted_provider_peers,
-	// }
+	providerPeersResponse, err := private_routing.RunPIRforProviderPeersRecords(pirRequest, mapCIDtoProviderPeers)
 
 	response := &pb.Message{
-		Type:             pb.Message_PRIVATE_GET_PROVIDERS,
-		EncryptedRecords: pirResponse,
+		Type:                  pb.Message_PRIVATE_GET_PROVIDERS,
+		PIR_Message_ID:        msg.PIR_Message_ID,
+		CloserPeersResponse:   closerPeersResponse,
+		ProviderPeersResponse: providerPeersResponse,
 	}
 
 	return response, nil

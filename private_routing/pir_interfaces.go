@@ -9,18 +9,12 @@ import (
 
 func RunPIRforCloserPeersRecords(req *pb.PIR_Request, ModifiedRT [][]byte) (*pb.PIR_Response, error) {
 
-	response, err := pir.ProcessRequestAndReturnResponse(req.CloserPirQuery, ModifiedRT)
+	response, err := pir.ProcessRequestAndReturnResponse(req, ModifiedRT)
 	if err != nil {
 		return nil, err
 	}
 
-	return &pb.PIR_Response{
-		Id:          req.Id,
-		CloserPeers: response,
-	}, nil
-
-	// // Import the simple_rlwe.go file and call the function that does the PIR
-	// return nil, fmt.Errorf("could not compute PIR response over ModifiedRT of peer records")
+	return response, nil
 }
 
 func RunPIRforProviderPeersRecords(req *pb.PIR_Request, mapCIDtoProviderPeers map[string][]byte) (*pb.PIR_Response, error) {

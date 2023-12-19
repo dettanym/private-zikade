@@ -100,10 +100,10 @@ func SampleGeneratePIRRequest() (*pb.PIR_Request, error) {
 		return nil, err
 	}
 
-	pirRequest := &pb.PIR_SimpleRLWE_Request{
+	pirRequest := &pb.PIR_Request{
 		Parameters: parametersBinary,
-		OneOfParameters: &pb.PIR_SimpleRLWE_Request_EvaluationKeys{
-			EvaluationKeys: evKeyBinary},
+		SchemeDependent: &pb.PIR_Request_RLWEEvaluationKeys{
+			RLWEEvaluationKeys: evKeyBinary},
 		EncryptedQuery: ciphertextBinary,
 	}
 

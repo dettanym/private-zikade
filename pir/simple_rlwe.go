@@ -18,7 +18,7 @@ type SimpleRLWEPIRQuery struct {
 	encrypted_query rlwe.Ciphertext
 }
 
-func (q *SimpleRLWEPIRQuery) MarshalRequestToPB() (*pb.PIR_SimpleRLWE_Request, error) {
+func (q *SimpleRLWEPIRQuery) MarshalRequestToPB() (*pb.PIR_Request, error) {
 	params_bytes, err := q.parameters.MarshalBinary()
 	if err != nil {
 		return nil, err
@@ -32,10 +32,10 @@ func (q *SimpleRLWEPIRQuery) MarshalRequestToPB() (*pb.PIR_SimpleRLWE_Request, e
 		return nil, err
 	}
 
-	pirRequest := pb.PIR_SimpleRLWE_Request{
+	pirRequest := pb.PIR_Request{
 		Parameters: params_bytes,
-		OneOfParameters: &pb.PIR_SimpleRLWE_Request_EvaluationKeys{
-			EvaluationKeys: evk_bytes,
+		SchemeDependent: &pb.PIR_Request_RLWEEvaluationKeys{
+			RLWEEvaluationKeys: evk_bytes,
 		},
 		EncryptedQuery: query_bytes,
 	}
@@ -43,7 +43,7 @@ func (q *SimpleRLWEPIRQuery) MarshalRequestToPB() (*pb.PIR_SimpleRLWE_Request, e
 	return &pirRequest, nil
 }
 
-func (q *SimpleRLWEPIRQuery) UnmarshallRequestFromPB(req *pb.PIR_SimpleRLWE_Request) error {
+func (q *SimpleRLWEPIRQuery) UnmarshallRequestFromPB(req *pb.PIR_Request) error {
 	err := q.parameters.UnmarshalBinary(req.GetParameters())
 	if err != nil {
 		return fmt.Errorf("error unmarshalling parameter bytes")
@@ -54,21 +54,21 @@ func (q *SimpleRLWEPIRQuery) UnmarshallRequestFromPB(req *pb.PIR_SimpleRLWE_Requ
 		return fmt.Errorf("error unmarshalling encrypted query bytes")
 	}
 
-	switch opt_param_type := req.OneOfParameters.(type) {
-	case *pb.PIR_SimpleRLWE_Request_EvaluationKeys:
-		evaluation_keys_bytes := opt_param_type.EvaluationKeys
+	switch schemeDependent := req.SchemeDependent.(type) {
+	case *pb.PIR_Request_RLWEEvaluationKeys:
+		evaluationKeysBytes := schemeDependent.RLWEEvaluationKeys
 		println("OptionalParameters is set to EV Keys")
-		err = q.evaluation_keys.UnmarshalBinary(evaluation_keys_bytes)
+		err = q.evaluation_keys.UnmarshalBinary(evaluationKeysBytes)
 		if err != nil {
 			return fmt.Errorf("error unmarshalling evaluation key bytes")
 		}
-	case *pb.PIR_SimpleRLWE_Request_OtherKeys:
-		other_keys_bytes := opt_param_type.OtherKeys
-		println("OptionalParameters is set to other keys", other_keys_bytes)
+	case *pb.PIR_Request_OtherKeys:
+		otherKeysBytes := schemeDependent.OtherKeys
+		println("OptionalParameters is set to other keys", otherKeysBytes)
 	case nil:
 		return fmt.Errorf("unmarshalling request from PB: need one of EV Keys or Random lol")
 	default:
-		return fmt.Errorf("unmarshalling request from PB: req.OptionalParameters has unexpected type %T", opt_param_type)
+		return fmt.Errorf("unmarshalling request from PB: req.OptionalParameters has unexpected type %T", schemeDependent)
 	}
 
 	return nil
@@ -166,7 +166,7 @@ type PIR_Protocol interface {
 type PIR_Protocol_Simple_RLWE struct {
 }
 
-func ProcessRequestAndReturnResponse(request *pb.PIR_SimpleRLWE_Request, database [][]byte) (*pb.PIR_SimpleRLWE_Response, error) {
+func ProcessRequestAndReturnResponse(request *pb.PIR_Request, database [][]byte) (*pb.PIR_Response, error) {
 
 	start := time.Now()
 
@@ -244,7 +244,7 @@ func ProcessRequestAndReturnResponse(request *pb.PIR_SimpleRLWE_Request, databas
 		}
 		ctBytesArray[i] = ctBytes
 	}
-	response := &pb.PIR_SimpleRLWE_Response{Ciphertexts: ctBytesArray}
+	response := &pb.PIR_Response{Ciphertexts: ctBytesArray}
 
 	elapsed := time.Since(start)
 	log.Printf("elapsed time: %v", elapsed)
