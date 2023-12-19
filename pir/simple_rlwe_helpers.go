@@ -5,12 +5,11 @@ import (
 	"github.com/plprobelab/zikade/pb"
 	"github.com/tuneinsight/lattigo/v5/core/rlwe"
 	"github.com/tuneinsight/lattigo/v5/he/heint"
-	"github.com/tuneinsight/lattigo/v5/utils"
 	"github.com/tuneinsight/lattigo/v5/utils/sampling"
 )
 
 // From https://github.com/tuneinsight/lattigo/blob/master/schemes/bgv/examples_parameters.go
-func sampleGenerateParameters() (*heint.Parameters, error) { //
+func (rlweStruct *SimpleRLWEPIR) sampleGenerateParameters() (heint.Parameters, error) { //
 	var (
 		// ExampleParameters128BitLogN14LogQP438 is an example parameters set with logN=14, logQP=438
 		// and a 16-bit plaintext modulus, offering 128-bit of security.
@@ -27,19 +26,19 @@ func sampleGenerateParameters() (*heint.Parameters, error) { //
 
 	literal, err := heint.NewParametersFromLiteral(ExampleParameters128BitLogN14LogQP438)
 	if err != nil {
-		return nil, fmt.Errorf("could not create test HE Parameters %s", err)
+		return heint.Parameters{}, fmt.Errorf("could not create test HE Parameters %s", err)
 	}
 
-	return &literal, nil
+	return literal, nil
 }
 
-func sampleGenerateRLWECiphertext() (*rlwe.Ciphertext, error) {
+func (rlweStruct *SimpleRLWEPIR) sampleGenerateRLWECiphertext() (*rlwe.Ciphertext, error) {
 	prng, err := sampling.NewPRNG()
 	if err != nil {
 		return nil, err
 	}
 
-	params, err := sampleGenerateParameters()
+	params, err := rlweStruct.sampleGenerateParameters()
 	if err != nil {
 		return nil, err
 	}
@@ -51,26 +50,28 @@ func sampleGenerateRLWECiphertext() (*rlwe.Ciphertext, error) {
 	return ct, nil
 }
 
-func sampleGenerateEvaluationKeys() (*rlwe.EvaluationKey, error) {
-	params, err := sampleGenerateParameters()
-	if err != nil {
-		return nil, err
-	}
-	// https://github.com/tuneinsight/lattigo/blob/v5.0.2/core/rlwe/rlwe_benchmark_test.go#L136
-	// https://github.com/tuneinsight/lattigo/blob/v5.0.2/core/rlwe/test_params.go
-	evkParams := rlwe.EvaluationKeyParameters{
-		LevelQ:               utils.Pointy(params.MaxLevelQ()),
-		LevelP:               utils.Pointy(params.MaxLevelP()),
-		BaseTwoDecomposition: utils.Pointy(16),
-	}
-
-	// https://github.com/tuneinsight/lattigo/blob/v5.0.2/core/rlwe/keys.go#L327
-	evKey := rlwe.NewEvaluationKey(params, evkParams)
-	return evKey, nil
+func (rlweStruct *SimpleRLWEPIR) sampleGenerateEvaluationKeys() (*rlwe.MemEvaluationKeySet, error) {
+	//params, err := rlweStruct.sampleGenerateParameters()
+	//if err != nil {
+	//	return nil, err
+	//}
+	//// https://github.com/tuneinsight/lattigo/blob/v5.0.2/core/rlwe/rlwe_benchmark_test.go#L136
+	//// https://github.com/tuneinsight/lattigo/blob/v5.0.2/core/rlwe/test_params.go
+	//evkParams := rlwe.EvaluationKeyParameters{
+	//	LevelQ:               utils.Pointy(params.MaxLevelQ()),
+	//	LevelP:               utils.Pointy(params.MaxLevelP()),
+	//	BaseTwoDecomposition: utils.Pointy(16),
+	//}
+	//
+	//// https://github.com/tuneinsight/lattigo/blob/v5.0.2/core/rlwe/keys.go#L327
+	//evKey := rlwe.NewEvaluationKey(params, evkParams)
+	//
+	memKey := rlwe.NewMemEvaluationKeySet(nil, nil)
+	return memKey, nil
 }
 
-func SampleGeneratePIRRequest() (*pb.PIR_Request, error) {
-	parameters, err := sampleGenerateParameters()
+func (rlweStruct *SimpleRLWEPIR) SampleGeneratePIRRequest() (*pb.PIR_Request, error) {
+	parameters, err := rlweStruct.sampleGenerateParameters()
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +82,7 @@ func SampleGeneratePIRRequest() (*pb.PIR_Request, error) {
 		return nil, err
 	}
 
-	ciphertext, err := sampleGenerateRLWECiphertext()
+	ciphertext, err := rlweStruct.sampleGenerateRLWECiphertext()
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +92,7 @@ func SampleGeneratePIRRequest() (*pb.PIR_Request, error) {
 		return nil, err
 	}
 
-	evKey, err := sampleGenerateEvaluationKeys()
+	evKey, err := rlweStruct.sampleGenerateEvaluationKeys()
 	if err != nil {
 		return nil, err
 	}
