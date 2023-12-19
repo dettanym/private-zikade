@@ -20,9 +20,6 @@ type SimpleRLWEPIR struct {
 	response_ciphertexts []rlwe.Ciphertext
 }
 
-// TODO: The marshalling, unmarshalling functions don't need to be public.
-//
-//	make them private, while being able to test them.
 func (rlweStruct *SimpleRLWEPIR) MarshalRequestToPB() (*pb.PIR_Request, error) {
 	params_bytes, err := rlweStruct.parameters.MarshalBinary()
 	if err != nil {
@@ -221,17 +218,6 @@ func (rlweStruct *SimpleRLWEPIR) UnmarshalBinary(data []byte) error {
 	}
 
 	return nil
-}
-
-type PIR_Protocol interface {
-	ProcessRequestAndReturnResponse(request *pb.PIR_Request, database [][]byte) (*pb.PIR_Response, error)
-	GenerateRequestFromPlaintext([]byte) (*pb.PIR_Request, error)
-	ProcessResponseToPlaintext(res *pb.PIR_Response) ([]byte, error)
-
-	MarshalRequestToPB() (*pb.PIR_Request, error)
-	UnmarshallRequestFromPB(req *pb.PIR_Request) error
-	MarshalResponseToPB() (*pb.PIR_Response, error)
-	UnmarshallResponseFromPB(res *pb.PIR_Response) error
 }
 
 func (rlweStruct *SimpleRLWEPIR) ProcessRequestAndReturnResponse(request *pb.PIR_Request, database [][]byte) (*pb.PIR_Response, error) {
