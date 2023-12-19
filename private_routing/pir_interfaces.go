@@ -2,8 +2,6 @@ package private_routing
 
 import (
 	"fmt"
-	"github.com/plprobelab/zikade/kadt"
-
 	"github.com/plprobelab/zikade/pb"
 	"github.com/plprobelab/zikade/pir"
 )
@@ -25,12 +23,4 @@ func RunPIRforProviderPeersRecords(req *pb.PIR_Request, mapCIDtoProviderPeers ma
 	// The join would be computed as often as provider ads are requested.
 	// We must do the join at least as frequent as the addressbook or the provider ads datastore is updated.
 	return nil, fmt.Errorf("could not compute PIR response over mapCIDtoProviderPeers")
-}
-
-func GeneratePIRPlaintext(key kadt.Key) ([]byte, error) {
-	return nil, nil
-}
-
-func ProcessPlaintextInPIRResponse(res []byte) ([]pb.Message_Peer, error) {
-	return nil, nil
 }
