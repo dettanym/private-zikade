@@ -3,6 +3,7 @@ package pir
 import (
 	"encoding/binary"
 	"fmt"
+	"github.com/plprobelab/zikade/kadt"
 	"log"
 	"math"
 	"time"
@@ -102,6 +103,14 @@ func (rlweStruct *SimpleRLWEPIR) UnmarshalResponseFromPB(res *pb.PIR_Response) e
 		}
 	}
 	return nil
+}
+
+func (rlweStruct *SimpleRLWEPIR) GenerateRequestFromPlaintext(key kadt.Key) (*pb.PIR_Request, error) {
+	return nil, nil
+}
+
+func (rlweStruct *SimpleRLWEPIR) ProcessResponseToPlaintext(res *pb.PIR_Response) ([]pb.Message_Peer, error) {
+	return nil, nil
 }
 
 func (rlweStruct *SimpleRLWEPIR) MarshalBinary() ([]byte, error) {
