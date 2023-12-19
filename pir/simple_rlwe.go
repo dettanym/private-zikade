@@ -91,6 +91,19 @@ func (rlweStruct *SimpleRLWEPIR) MarshalResponseToPB() (*pb.PIR_Response, error)
 	return response, nil
 }
 
+func (rlweStruct *SimpleRLWEPIR) UnmarshalResponseFromPB(res *pb.PIR_Response) error {
+	ctBytesArray := res.GetCiphertexts()
+	rlweStruct.response_ciphertexts = make([]rlwe.Ciphertext, len(ctBytesArray))
+	for i, ctBytes := range ctBytesArray {
+		ct := rlweStruct.response_ciphertexts[i]
+		err := ct.UnmarshalBinary(ctBytes)
+		if err != nil {
+			return fmt.Errorf("error unmarshalling %dth ciphertext. Error: %s", i, err)
+		}
+	}
+	return nil
+}
+
 func (rlweStruct *SimpleRLWEPIR) MarshalBinary() ([]byte, error) {
 	params_bytes, err := rlweStruct.parameters.MarshalBinary()
 	if err != nil {
