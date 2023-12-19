@@ -8,7 +8,7 @@ import "github.com/plprobelab/zikade/pb"
 
 type PIR_Protocol interface {
 	ProcessRequestAndReturnResponse(request *pb.PIR_Request, database [][]byte) (*pb.PIR_Response, error)
-	GenerateRequestFromPlaintext([]byte) (*pb.PIR_Request, error)
+	GenerateRequestFromQuery(int) (*pb.PIR_Request, error)
 	ProcessResponseToPlaintext(res *pb.PIR_Response) ([]byte, error)
 
 	MarshalRequestToPB() (*pb.PIR_Request, error)

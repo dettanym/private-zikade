@@ -2,14 +2,15 @@ package private_routing
 
 import (
 	"fmt"
+
 	"github.com/plprobelab/zikade/kadt"
+	"github.com/plprobelab/zikade/pir"
 
 	"github.com/plprobelab/zikade/pb"
-	"github.com/plprobelab/zikade/pir"
 )
 
 func RunPIRforCloserPeersRecords(req *pb.PIR_Request, ModifiedRT [][]byte) (*pb.PIR_Response, error) {
-	simpleRLWEPIR := pir.SimpleRLWE_PIR_Protocol{}
+	simpleRLWEPIR := pir.NewSimpleRLWE_PIR_Protocol(int(len(ModifiedRT)))
 	response, err := simpleRLWEPIR.ProcessRequestAndReturnResponse(req, ModifiedRT)
 	if err != nil {
 		return nil, err
