@@ -6,7 +6,9 @@ import (
 )
 
 func TestSimpleRLWEPIRQuery_UnmarshallRequestFromPB(t *testing.T) {
-	pirRequest, err := SampleGeneratePIRRequest()
+	chosen_PIR_Protocol := SimpleRLWEPIR{}
+
+	pirRequest, err := chosen_PIR_Protocol.SampleGeneratePIRRequest()
 	require.NoError(t, err)
 
 	query := &SimpleRLWEPIR{}
@@ -16,13 +18,17 @@ func TestSimpleRLWEPIRQuery_UnmarshallRequestFromPB(t *testing.T) {
 }
 
 func TestPIR_Protocol_Simple_RLWE_ProcessRequestAndReturnResponse(t *testing.T) {
-	pirRequest, err := SampleGeneratePIRRequest()
+	chosen_PIR_Protocol := SimpleRLWEPIR{}
+
+	pirRequest, err := chosen_PIR_Protocol.SampleGeneratePIRRequest()
 	require.NoError(t, err)
 
-	// TODO: Gen random DB of right size
 	db := make([][]byte, 256)
+	for i := range db {
+		db[i] = make([]byte, 20*256)
+	}
 
-	response, err := ProcessRequestAndReturnResponse(pirRequest, db)
+	response, err := chosen_PIR_Protocol.ProcessRequestAndReturnResponse(pirRequest, db)
 	require.NoError(t, err)
 
 	println(response)

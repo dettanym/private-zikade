@@ -8,8 +8,8 @@ import (
 )
 
 func RunPIRforCloserPeersRecords(req *pb.PIR_Request, ModifiedRT [][]byte) (*pb.PIR_Response, error) {
-
-	response, err := pir.ProcessRequestAndReturnResponse(req, ModifiedRT)
+	simpleRLWEPIR := pir.SimpleRLWEPIR{}
+	response, err := simpleRLWEPIR.ProcessRequestAndReturnResponse(req, ModifiedRT)
 	if err != nil {
 		return nil, err
 	}
