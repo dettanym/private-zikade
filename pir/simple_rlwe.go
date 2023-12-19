@@ -16,8 +16,8 @@ import (
 type SimpleRLWEPIR struct {
 	PIR_Protocol
 	parameters           heint.Parameters
-	evaluation_keys      rlwe.MemEvaluationKeySet
-	encrypted_query      rlwe.Ciphertext
+	evaluation_keys      *rlwe.MemEvaluationKeySet
+	encrypted_query      *rlwe.Ciphertext
 	response_ciphertexts []rlwe.Ciphertext
 }
 
@@ -225,10 +225,10 @@ func (rlweStruct *SimpleRLWEPIR) ProcessRequestAndReturnResponse(request *pb.PIR
 	encrypted_query := rlweStruct.encrypted_query
 
 	N := params.N()
-	evaluator := heint.NewEvaluator(params, &evaluation_keys)
+	evaluator := heint.NewEvaluator(params, evaluation_keys)
 	encoder := heint.NewEncoder(params)
 
-	indicator_bits, err := evaluator.Expand(&encrypted_query, log2_num_rows, 0)
+	indicator_bits, err := evaluator.Expand(encrypted_query, log2_num_rows, 0)
 	if err != nil {
 		return nil, err
 	}
