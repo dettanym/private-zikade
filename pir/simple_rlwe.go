@@ -3,7 +3,6 @@ package pir
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/plprobelab/zikade/kadt"
 	"log"
 	"math"
 	"time"
@@ -106,11 +105,38 @@ func (rlweStruct *SimpleRLWEPIR) UnmarshalResponseFromPB(res *pb.PIR_Response) e
 	return nil
 }
 
-func (rlweStruct *SimpleRLWEPIR) GenerateRequestFromPlaintext(key kadt.Key) (*pb.PIR_Request, error) {
-	return nil, nil
+func (rlweStruct *SimpleRLWEPIR) GenerateRequestFromPlaintext(plaintext []byte) (*pb.PIR_Request, error) {
+	// TODO: Rasoul, you can change the implementation of sampleGenerateParameters and sampleGenerateEvaluationKeys
+	parameters, err := rlweStruct.sampleGenerateParameters()
+	if err != nil {
+		return nil, err
+	}
+	rlweStruct.parameters = parameters
+
+	ciphertext, err := rlweStruct.sampleGenerateRLWECiphertext()
+	if err != nil {
+		return nil, err
+	}
+	rlweStruct.encrypted_query = ciphertext
+
+	// TODO: Rasoul, you can use the plaintext to generate rlweStruct.encrypted_query
+	keys, err := rlweStruct.sampleGenerateEvaluationKeys()
+	if err != nil {
+		return nil, err
+	}
+	rlweStruct.evaluation_keys = keys
+
+	return rlweStruct.MarshalRequestToPB()
 }
 
-func (rlweStruct *SimpleRLWEPIR) ProcessResponseToPlaintext(res *pb.PIR_Response) ([]pb.Message_Peer, error) {
+func (rlweStruct *SimpleRLWEPIR) ProcessResponseToPlaintext(res *pb.PIR_Response) ([]byte, error) {
+	err := rlweStruct.UnmarshalResponseFromPB(res)
+	if err != nil {
+		return nil, err
+	}
+
+	println(rlweStruct.response_ciphertexts)
+	// TODO: @Rasoul: this should return a row of the DB input into ProcessRequestAndReturnResponse
 	return nil, nil
 }
 
@@ -199,8 +225,8 @@ func (rlweStruct *SimpleRLWEPIR) UnmarshalBinary(data []byte) error {
 
 type PIR_Protocol interface {
 	ProcessRequestAndReturnResponse(request *pb.PIR_Request, database [][]byte) (*pb.PIR_Response, error)
-	GenerateRequestFromPlaintext(key kadt.Key) (*pb.PIR_Request, error)
-	ProcessResponseToPlaintext(res *pb.PIR_Response) ([]pb.Message_Peer, error)
+	GenerateRequestFromPlaintext([]byte) (*pb.PIR_Request, error)
+	ProcessResponseToPlaintext(res *pb.PIR_Response) ([]byte, error)
 
 	MarshalRequestToPB() (*pb.PIR_Request, error)
 	UnmarshallRequestFromPB(req *pb.PIR_Request) error
