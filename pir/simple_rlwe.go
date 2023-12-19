@@ -78,6 +78,19 @@ func (rlweStruct *SimpleRLWEPIR) UnmarshallRequestFromPB(req *pb.PIR_Request) er
 	return nil
 }
 
+func (rlweStruct *SimpleRLWEPIR) MarshalResponseToPB() (*pb.PIR_Response, error) {
+	ctBytesArray := make([][]byte, len(rlweStruct.response_ciphertexts))
+	for i, ct := range rlweStruct.response_ciphertexts {
+		ctBytes, err := ct.MarshalBinary()
+		if err != nil {
+			return nil, fmt.Errorf("error marshalling %dth ciphertext. Error: %s", i, err)
+		}
+		ctBytesArray[i] = ctBytes
+	}
+	response := &pb.PIR_Response{Ciphertexts: ctBytesArray}
+	return response, nil
+}
+
 func (rlweStruct *SimpleRLWEPIR) MarshalBinary() ([]byte, error) {
 	params_bytes, err := rlweStruct.parameters.MarshalBinary()
 	if err != nil {
@@ -237,15 +250,10 @@ func ProcessRequestAndReturnResponse(request *pb.PIR_Request, database [][]byte)
 	//	return nil, err
 	//}
 	// return response_bytes
-	ctBytesArray := make([][]byte, len(rlweStruct.response_ciphertexts))
-	for i, ct := range rlweStruct.response_ciphertexts {
-		ctBytes, err := ct.MarshalBinary()
-		if err != nil {
-			return nil, fmt.Errorf("error marshalling %dth ciphertext. Error: %s", i, err)
-		}
-		ctBytesArray[i] = ctBytes
+	response, err := rlweStruct.MarshalResponseToPB()
+	if err != nil {
+		return nil, err
 	}
-	response := &pb.PIR_Response{Ciphertexts: ctBytesArray}
 
 	elapsed := time.Since(start)
 	log.Printf("elapsed time: %v", elapsed)
