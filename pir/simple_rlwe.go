@@ -208,9 +208,6 @@ type PIR_Protocol interface {
 	UnmarshallResponseFromPB(res *pb.PIR_Response) error
 }
 
-type PIR_Protocol_Simple_RLWE struct {
-}
-
 func (rlweStruct *SimpleRLWEPIR) ProcessRequestAndReturnResponse(request *pb.PIR_Request, database [][]byte) (*pb.PIR_Response, error) {
 
 	start := time.Now()
