@@ -188,7 +188,11 @@ func (rlweStruct *SimpleRLWEPIR) UnmarshalBinary(data []byte) error {
 }
 
 type PIR_Protocol interface {
-	ProcessRequestAndReturnResponse(msg []byte, database [][]byte) ([]byte, error)
+	ProcessRequestAndReturnResponse(request *pb.PIR_Request, database [][]byte) (*pb.PIR_Response, error)
+	MarshalRequestToPB() (*pb.PIR_Request, error)
+	UnmarshallRequestFromPB(req *pb.PIR_Request) error
+	MarshalResponseToPB() (*pb.PIR_Response, error)
+	UnmarshallResponseFromPB(res *pb.PIR_Response) error
 }
 
 type PIR_Protocol_Simple_RLWE struct {
