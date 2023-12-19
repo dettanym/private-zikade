@@ -1506,8 +1506,9 @@ func TestDHT_handlePrivateFindPeer(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, pb.Message_PRIVATE_FIND_NODE, resp.Type)
+	assert.Equal(t, resp.PIR_Message_ID, req.PIR_Message_ID)
+
 	//assert.Nil(t, resp.Record)
-	//assert.Equal(t, req.Key, resp.Key)
 	//assert.Len(t, resp.CloserPeers, d.cfg.BucketSize)
 	//assert.Len(t, resp.ProviderPeers, 0)
 	//assert.Equal(t, len(resp.CloserPeers[0].Addrs), 1)
