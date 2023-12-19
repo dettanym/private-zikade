@@ -13,9 +13,10 @@ import (
 )
 
 type SimpleRLWEPIR struct {
-	parameters      heint.Parameters
-	evaluation_keys rlwe.MemEvaluationKeySet
-	encrypted_query rlwe.Ciphertext
+	parameters           heint.Parameters
+	evaluation_keys      rlwe.MemEvaluationKeySet
+	encrypted_query      rlwe.Ciphertext
+	response_ciphertexts []rlwe.Ciphertext
 }
 
 // TODO: The marshalling, unmarshalling functions don't need to be public.
@@ -199,7 +200,7 @@ func ProcessRequestAndReturnResponse(request *pb.PIR_Request, database [][]byte)
 	bytes_per_ciphertext := bytes_per_coefficient * int(N)
 	number_of_response_ciphertexts := (len(database) + bytes_per_coefficient - 1) / bytes_per_coefficient
 
-	response_ciphertexts := make([]rlwe.Ciphertext, number_of_response_ciphertexts)
+	rlweStruct.response_ciphertexts = make([]rlwe.Ciphertext, number_of_response_ciphertexts)
 
 	// WARNING: Inner loop is not paralleliable
 	for k := 0; k < number_of_response_ciphertexts; k++ {
@@ -223,9 +224,9 @@ func ProcessRequestAndReturnResponse(request *pb.PIR_Request, database [][]byte)
 				if err != nil {
 					panic(err)
 				}
-				response_ciphertexts[k] = *tmp
+				rlweStruct.response_ciphertexts[k] = *tmp
 			} else {
-				evaluator.MulThenAdd(indicator_bits[i], row_data_plaintext, &response_ciphertexts[k])
+				evaluator.MulThenAdd(indicator_bits[i], row_data_plaintext, &rlweStruct.response_ciphertexts[k])
 			}
 		}
 	}
@@ -236,9 +237,8 @@ func ProcessRequestAndReturnResponse(request *pb.PIR_Request, database [][]byte)
 	//	return nil, err
 	//}
 	// return response_bytes
-
-	ctBytesArray := make([][]byte, len(response_ciphertexts))
-	for i, ct := range response_ciphertexts {
+	ctBytesArray := make([][]byte, len(rlweStruct.response_ciphertexts))
+	for i, ct := range rlweStruct.response_ciphertexts {
 		ctBytes, err := ct.MarshalBinary()
 		if err != nil {
 			return nil, fmt.Errorf("error marshalling %dth ciphertext. Error: %s", i, err)
