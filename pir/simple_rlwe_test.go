@@ -6,7 +6,7 @@ import (
 )
 
 func TestSimpleRLWEPIRQuery_UnmarshallRequestFromPB(t *testing.T) {
-	pirRequest, err := GeneratePIRRequest()
+	pirRequest, err := SampleGeneratePIRRequest()
 	require.NoError(t, err)
 
 	query := &SimpleRLWEPIRQuery{}
@@ -16,7 +16,7 @@ func TestSimpleRLWEPIRQuery_UnmarshallRequestFromPB(t *testing.T) {
 }
 
 func TestPIR_Protocol_Simple_RLWE_ProcessRequestAndReturnResponse(t *testing.T) {
-	pirRequest, err := GeneratePIRRequest()
+	pirRequest, err := SampleGeneratePIRRequest()
 	require.NoError(t, err)
 
 	// TODO: Gen random DB of right size

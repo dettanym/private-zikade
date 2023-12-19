@@ -10,7 +10,7 @@ import (
 )
 
 // From https://github.com/tuneinsight/lattigo/blob/master/schemes/bgv/examples_parameters.go
-func generateSampleParameters() (*heint.Parameters, error) { //
+func sampleGenerateParameters() (*heint.Parameters, error) { //
 	var (
 		// ExampleParameters128BitLogN14LogQP438 is an example parameters set with logN=14, logQP=438
 		// and a 16-bit plaintext modulus, offering 128-bit of security.
@@ -33,13 +33,13 @@ func generateSampleParameters() (*heint.Parameters, error) { //
 	return &literal, nil
 }
 
-func generateRLWECiphertext() (*rlwe.Ciphertext, error) {
+func sampleGenerateRLWECiphertext() (*rlwe.Ciphertext, error) {
 	prng, err := sampling.NewPRNG()
 	if err != nil {
 		return nil, err
 	}
 
-	params, err := generateSampleParameters()
+	params, err := sampleGenerateParameters()
 	if err != nil {
 		return nil, err
 	}
@@ -51,8 +51,8 @@ func generateRLWECiphertext() (*rlwe.Ciphertext, error) {
 	return ct, nil
 }
 
-func generateEvaluationKeys() (*rlwe.EvaluationKey, error) {
-	params, err := generateSampleParameters()
+func sampleGenerateEvaluationKeys() (*rlwe.EvaluationKey, error) {
+	params, err := sampleGenerateParameters()
 	if err != nil {
 		return nil, err
 	}
@@ -69,8 +69,8 @@ func generateEvaluationKeys() (*rlwe.EvaluationKey, error) {
 	return evKey, nil
 }
 
-func GeneratePIRRequest() (*pb.PIR_SimpleRLWE_Request, error) {
-	parameters, err := generateSampleParameters()
+func SampleGeneratePIRRequest() (*pb.PIR_Request, error) {
+	parameters, err := sampleGenerateParameters()
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +81,7 @@ func GeneratePIRRequest() (*pb.PIR_SimpleRLWE_Request, error) {
 		return nil, err
 	}
 
-	ciphertext, err := generateRLWECiphertext()
+	ciphertext, err := sampleGenerateRLWECiphertext()
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +91,7 @@ func GeneratePIRRequest() (*pb.PIR_SimpleRLWE_Request, error) {
 		return nil, err
 	}
 
-	evKey, err := generateEvaluationKeys()
+	evKey, err := sampleGenerateEvaluationKeys()
 	if err != nil {
 		return nil, err
 	}

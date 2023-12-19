@@ -1491,7 +1491,7 @@ func TestDHT_handlePrivateFindPeer(t *testing.T) {
 
 	peers := fillRoutingTable(t, d, 250)
 
-	pirRequest, err := pir.GeneratePIRRequest()
+	pirRequest, err := pir.SampleGeneratePIRRequest()
 	require.NoError(t, err)
 
 	req := &pb.Message{
