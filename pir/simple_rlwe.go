@@ -12,22 +12,25 @@ import (
 	"github.com/tuneinsight/lattigo/v5/he/heint"
 )
 
-type SimpleRLWEPIRQuery struct {
+type SimpleRLWEPIR struct {
 	parameters      heint.Parameters
 	evaluation_keys rlwe.MemEvaluationKeySet
 	encrypted_query rlwe.Ciphertext
 }
 
-func (q *SimpleRLWEPIRQuery) MarshalRequestToPB() (*pb.PIR_Request, error) {
-	params_bytes, err := q.parameters.MarshalBinary()
+// TODO: The marshalling, unmarshalling functions don't need to be public.
+//
+//	make them private, while being able to test them.
+func (rlweStruct *SimpleRLWEPIR) MarshalRequestToPB() (*pb.PIR_Request, error) {
+	params_bytes, err := rlweStruct.parameters.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
-	evk_bytes, err := q.evaluation_keys.MarshalBinary()
+	evk_bytes, err := rlweStruct.evaluation_keys.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
-	query_bytes, err := q.encrypted_query.MarshalBinary()
+	query_bytes, err := rlweStruct.encrypted_query.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
@@ -43,13 +46,13 @@ func (q *SimpleRLWEPIRQuery) MarshalRequestToPB() (*pb.PIR_Request, error) {
 	return &pirRequest, nil
 }
 
-func (q *SimpleRLWEPIRQuery) UnmarshallRequestFromPB(req *pb.PIR_Request) error {
-	err := q.parameters.UnmarshalBinary(req.GetParameters())
+func (rlweStruct *SimpleRLWEPIR) UnmarshallRequestFromPB(req *pb.PIR_Request) error {
+	err := rlweStruct.parameters.UnmarshalBinary(req.GetParameters())
 	if err != nil {
 		return fmt.Errorf("error unmarshalling parameter bytes")
 	}
 
-	err = q.encrypted_query.UnmarshalBinary(req.GetEncryptedQuery())
+	err = rlweStruct.encrypted_query.UnmarshalBinary(req.GetEncryptedQuery())
 	if err != nil {
 		return fmt.Errorf("error unmarshalling encrypted query bytes")
 	}
@@ -58,7 +61,7 @@ func (q *SimpleRLWEPIRQuery) UnmarshallRequestFromPB(req *pb.PIR_Request) error 
 	case *pb.PIR_Request_RLWEEvaluationKeys:
 		evaluationKeysBytes := schemeDependent.RLWEEvaluationKeys
 		println("OptionalParameters is set to EV Keys")
-		err = q.evaluation_keys.UnmarshalBinary(evaluationKeysBytes)
+		err = rlweStruct.evaluation_keys.UnmarshalBinary(evaluationKeysBytes)
 		if err != nil {
 			return fmt.Errorf("error unmarshalling evaluation key bytes")
 		}
@@ -74,16 +77,16 @@ func (q *SimpleRLWEPIRQuery) UnmarshallRequestFromPB(req *pb.PIR_Request) error 
 	return nil
 }
 
-func (q *SimpleRLWEPIRQuery) MarshalBinary() ([]byte, error) {
-	params_bytes, err := q.parameters.MarshalBinary()
+func (rlweStruct *SimpleRLWEPIR) MarshalBinary() ([]byte, error) {
+	params_bytes, err := rlweStruct.parameters.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
-	evk_bytes, err := q.evaluation_keys.MarshalBinary()
+	evk_bytes, err := rlweStruct.evaluation_keys.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
-	query_bytes, err := q.encrypted_query.MarshalBinary()
+	query_bytes, err := rlweStruct.encrypted_query.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +114,7 @@ func (q *SimpleRLWEPIRQuery) MarshalBinary() ([]byte, error) {
 	return result, nil
 }
 
-func (q *SimpleRLWEPIRQuery) UnmarshalBinary(data []byte) error {
+func (rlweStruct *SimpleRLWEPIR) UnmarshalBinary(data []byte) error {
 	// Helper function to read next byte slice
 	readNextBytes := func(data []byte) ([]byte, []byte, error) {
 		if len(data) < 8 {
@@ -144,15 +147,13 @@ func (q *SimpleRLWEPIRQuery) UnmarshalBinary(data []byte) error {
 		return err
 	}
 
-	// Assuming q.parameters, q.evaluation_keys, q.encrypted_query have
-	// methods to unmarshal from byte slices
-	if err := q.parameters.UnmarshalBinary(params_bytes); err != nil {
+	if err := rlweStruct.parameters.UnmarshalBinary(params_bytes); err != nil {
 		return err
 	}
-	if err := q.evaluation_keys.UnmarshalBinary(evk_bytes); err != nil {
+	if err := rlweStruct.evaluation_keys.UnmarshalBinary(evk_bytes); err != nil {
 		return err
 	}
-	if err := q.encrypted_query.UnmarshalBinary(query_bytes); err != nil {
+	if err := rlweStruct.encrypted_query.UnmarshalBinary(query_bytes); err != nil {
 		return err
 	}
 
@@ -170,18 +171,18 @@ func ProcessRequestAndReturnResponse(request *pb.PIR_Request, database [][]byte)
 
 	start := time.Now()
 
-	// Set to the bytes of the query
+	// Set to the bytes of the rlweStruct
 
-	query := &SimpleRLWEPIRQuery{}
-	err := query.UnmarshallRequestFromPB(request)
+	rlweStruct := &SimpleRLWEPIR{}
+	err := rlweStruct.UnmarshallRequestFromPB(request)
 	if err != nil {
 		return nil, err
 	}
 
 	log2_num_rows := 8
-	params := query.parameters
-	evaluation_keys := query.evaluation_keys
-	encrypted_query := query.encrypted_query
+	params := rlweStruct.parameters
+	evaluation_keys := rlweStruct.evaluation_keys
+	encrypted_query := rlweStruct.encrypted_query
 
 	N := params.N()
 	evaluator := heint.NewEvaluator(params, &evaluation_keys)

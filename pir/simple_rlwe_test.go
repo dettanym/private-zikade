@@ -9,7 +9,7 @@ func TestSimpleRLWEPIRQuery_UnmarshallRequestFromPB(t *testing.T) {
 	pirRequest, err := SampleGeneratePIRRequest()
 	require.NoError(t, err)
 
-	query := &SimpleRLWEPIRQuery{}
+	query := &SimpleRLWEPIR{}
 
 	err = query.UnmarshallRequestFromPB(pirRequest)
 	require.NoError(t, err)
