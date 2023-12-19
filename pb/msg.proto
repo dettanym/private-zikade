@@ -72,37 +72,26 @@ message Message {
 	// GET_VALUE, ADD_PROVIDER, GET_PROVIDERS
 	repeated Peer provider_peers = 9;
 
-	PIR_Request encrypted_query = 32;
+  // PIR_Message_ID should just be a nonce. It is used as a request ID.
+  // Does not correspond to any keys in the Kademlia ID or peer ID spaces.
+  int64 PIR_Message_ID = 30;
 
-	PIR_Response encrypted_records = 33;
+  PIR_Request closer_peers_request = 32;
+  PIR_Request provider_peers_request = 33;
+
+	PIR_Response closer_peers_response = 34;
+  PIR_Response provider_peers_response = 35;
 }
 
-// ID should just be a hash of the ciphertext. Used as a request ID.
-// Does not correspond to any keys in the Kademlia ID or peer ID spaces.
 message PIR_Request {
-	bytes id = 1;
-
-  PIR_SimpleRLWE_Request closer_pir_query = 2;
-	bytes provider_peer_query = 3;
-}
-
-message PIR_Response {
-	bytes id = 1;
-
-  PIR_SimpleRLWE_Response closer_peers = 2;
-	bytes provider_peers = 3;
-	
-}
-
-message PIR_SimpleRLWE_Request {
     bytes parameters = 1;
-    oneof OneOfParameters {
-      bytes evaluation_keys = 10;
+    oneof SchemeDependent {
+      bytes RLWE_evaluation_keys = 10;
       bytes other_keys = 21;
     }
     bytes encrypted_query = 3;
 }
 
-message PIR_SimpleRLWE_Response {
+message PIR_Response {
   repeated bytes ciphertexts = 1;
 }
