@@ -14,6 +14,7 @@ import (
 )
 
 type SimpleRLWEPIR struct {
+	PIR_Protocol
 	parameters           heint.Parameters
 	evaluation_keys      rlwe.MemEvaluationKeySet
 	encrypted_query      rlwe.Ciphertext
