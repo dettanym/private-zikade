@@ -323,9 +323,9 @@ func (d *DHT) handlePrivateGetProviderRecords(ctx context.Context, remote peer.I
 	_, span := d.tele.Tracer.Start(ctx, "DHT.handlePrivateGetProviderRecords", otel.WithAttributes(attribute.String("remote", remote.String())))
 	defer span.End()
 
-	pirRequest := msg.GetProviderPeersRequest()
-	if pirRequest == nil {
-		return nil, fmt.Errorf("PIR Request for Provider Peers not sent in the message")
+	closerPeersRequest := msg.GetCloserPeersRequest()
+	if closerPeersRequest == nil {
+		return nil, fmt.Errorf("PIR Request for Closer Peers not sent in the message")
 	}
 
 	bucketsWithAddrInfos, err := d.NormalizeRTJoinedWithPeerStore(kadt.PeerID(remote).Key())
@@ -333,9 +333,14 @@ func (d *DHT) handlePrivateGetProviderRecords(ctx context.Context, remote peer.I
 		return nil, fmt.Errorf("could not form normalized, joined routing table to run PIR request over")
 	}
 
-	closerPeersResponse, err := private_routing.RunPIRforCloserPeersRecords(pirRequest, bucketsWithAddrInfos)
+	closerPeersResponse, err := private_routing.RunPIRforCloserPeersRecords(closerPeersRequest, bucketsWithAddrInfos)
 	if err != nil {
 		return nil, err
+	}
+
+	providerPeersRequest := msg.GetProviderPeersRequest()
+	if providerPeersRequest == nil {
+		return nil, fmt.Errorf("PIR Request for Provider Peers not sent in the message")
 	}
 
 	backend, ok := d.backends[namespaceProviders]
@@ -351,7 +356,7 @@ func (d *DHT) handlePrivateGetProviderRecords(ctx context.Context, remote peer.I
 		return nil, fmt.Errorf("could not construct a map of CIDs to provider peers for PIR")
 	}
 
-	providerPeersResponse, err := private_routing.RunPIRforProviderPeersRecords(pirRequest, mapCIDtoProviderPeers)
+	providerPeersResponse, err := private_routing.RunPIRforProviderPeersRecords(providerPeersRequest, mapCIDtoProviderPeers)
 
 	response := &pb.Message{
 		Type:                  pb.Message_PRIVATE_GET_PROVIDERS,
