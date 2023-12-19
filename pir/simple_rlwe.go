@@ -198,6 +198,9 @@ func (rlweStruct *SimpleRLWEPIR) UnmarshalBinary(data []byte) error {
 
 type PIR_Protocol interface {
 	ProcessRequestAndReturnResponse(request *pb.PIR_Request, database [][]byte) (*pb.PIR_Response, error)
+	GenerateRequestFromPlaintext(key kadt.Key) (*pb.PIR_Request, error)
+	ProcessResponseToPlaintext(res *pb.PIR_Response) ([]pb.Message_Peer, error)
+
 	MarshalRequestToPB() (*pb.PIR_Request, error)
 	UnmarshallRequestFromPB(req *pb.PIR_Request) error
 	MarshalResponseToPB() (*pb.PIR_Response, error)
