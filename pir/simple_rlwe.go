@@ -222,6 +222,8 @@ func (rlweStruct *SimpleRLWEPIR) UnmarshalBinary(data []byte) error {
 
 func (rlweStruct *SimpleRLWEPIR) ProcessRequestAndReturnResponse(request *pb.PIR_Request, database [][]byte) (*pb.PIR_Response, error) {
 
+	// TODO: Replace logging the time with Go Benchmarks
+	//   https://pkg.go.dev/testing#hdr-Benchmarks
 	start := time.Now()
 
 	err := rlweStruct.UnmarshallRequestFromPB(request)
@@ -256,10 +258,10 @@ func (rlweStruct *SimpleRLWEPIR) ProcessRequestAndReturnResponse(request *pb.PIR
 		for i := 0; i < num_rows; i++ {
 			// this part is encoding the content of row i in the coefficients of a polynomial
 			// TODO: change this to encode the bytes of row i in the input database
+			// TODO: Rasoul, confirm that the todo above is done.
 			coeffs := make([]uint64, N)
 			for j := 0; j < N; j++ {
 				start_index := bytes_per_ciphertext*k + bytes_per_coefficient*j
-				// TODO: @Rasoul confirm that this LittleEndian reference has nothing to do with the LittleEndian reference in your UnmarshallBinary() function.
 				coeffs[j] = binary.LittleEndian.Uint64(database[i][start_index : start_index+bytes_per_coefficient])
 			}
 			row_data_plaintext := heint.NewPlaintext(params, params.MaxLevel())
