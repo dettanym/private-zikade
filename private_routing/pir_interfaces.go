@@ -9,7 +9,7 @@ import (
 )
 
 func RunPIRforCloserPeersRecords(req *pb.PIR_Request, ModifiedRT [][]byte) (*pb.PIR_Response, error) {
-	simpleRLWEPIR := pir.SimpleRLWEPIR{}
+	simpleRLWEPIR := pir.SimpleRLWE_PIR_Protocol{}
 	response, err := simpleRLWEPIR.ProcessRequestAndReturnResponse(req, ModifiedRT)
 	if err != nil {
 		return nil, err

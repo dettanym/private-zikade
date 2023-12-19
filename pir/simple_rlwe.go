@@ -12,7 +12,7 @@ import (
 	"github.com/tuneinsight/lattigo/v5/he/heint"
 )
 
-type SimpleRLWEPIR struct {
+type SimpleRLWE_PIR_Protocol struct {
 	PIR_Protocol
 	parameters           heint.Parameters
 	evaluation_keys      *rlwe.MemEvaluationKeySet
@@ -20,7 +20,7 @@ type SimpleRLWEPIR struct {
 	response_ciphertexts []rlwe.Ciphertext
 }
 
-func (rlweStruct *SimpleRLWEPIR) MarshalRequestToPB() (*pb.PIR_Request, error) {
+func (rlweStruct *SimpleRLWE_PIR_Protocol) MarshalRequestToPB() (*pb.PIR_Request, error) {
 	params_bytes, err := rlweStruct.parameters.MarshalBinary()
 	if err != nil {
 		return nil, err
@@ -45,7 +45,7 @@ func (rlweStruct *SimpleRLWEPIR) MarshalRequestToPB() (*pb.PIR_Request, error) {
 	return &pirRequest, nil
 }
 
-func (rlweStruct *SimpleRLWEPIR) UnmarshallRequestFromPB(req *pb.PIR_Request) error {
+func (rlweStruct *SimpleRLWE_PIR_Protocol) UnmarshallRequestFromPB(req *pb.PIR_Request) error {
 	err := rlweStruct.parameters.UnmarshalBinary(req.GetParameters())
 	if err != nil {
 		return fmt.Errorf("error unmarshalling parameter bytes")
@@ -76,7 +76,7 @@ func (rlweStruct *SimpleRLWEPIR) UnmarshallRequestFromPB(req *pb.PIR_Request) er
 	return nil
 }
 
-func (rlweStruct *SimpleRLWEPIR) MarshalResponseToPB() (*pb.PIR_Response, error) {
+func (rlweStruct *SimpleRLWE_PIR_Protocol) MarshalResponseToPB() (*pb.PIR_Response, error) {
 	ctBytesArray := make([][]byte, len(rlweStruct.response_ciphertexts))
 	for i, ct := range rlweStruct.response_ciphertexts {
 		ctBytes, err := ct.MarshalBinary()
@@ -89,7 +89,7 @@ func (rlweStruct *SimpleRLWEPIR) MarshalResponseToPB() (*pb.PIR_Response, error)
 	return response, nil
 }
 
-func (rlweStruct *SimpleRLWEPIR) UnmarshalResponseFromPB(res *pb.PIR_Response) error {
+func (rlweStruct *SimpleRLWE_PIR_Protocol) UnmarshalResponseFromPB(res *pb.PIR_Response) error {
 	ctBytesArray := res.GetCiphertexts()
 	rlweStruct.response_ciphertexts = make([]rlwe.Ciphertext, len(ctBytesArray))
 	for i, ctBytes := range ctBytesArray {
@@ -102,7 +102,7 @@ func (rlweStruct *SimpleRLWEPIR) UnmarshalResponseFromPB(res *pb.PIR_Response) e
 	return nil
 }
 
-func (rlweStruct *SimpleRLWEPIR) GenerateRequestFromPlaintext(plaintext []byte) (*pb.PIR_Request, error) {
+func (rlweStruct *SimpleRLWE_PIR_Protocol) GenerateRequestFromPlaintext(plaintext []byte) (*pb.PIR_Request, error) {
 	// TODO: Rasoul, you can change the implementation of sampleGenerateParameters and sampleGenerateEvaluationKeys
 	parameters, err := rlweStruct.sampleGenerateParameters()
 	if err != nil {
@@ -126,7 +126,7 @@ func (rlweStruct *SimpleRLWEPIR) GenerateRequestFromPlaintext(plaintext []byte) 
 	return rlweStruct.MarshalRequestToPB()
 }
 
-func (rlweStruct *SimpleRLWEPIR) ProcessResponseToPlaintext(res *pb.PIR_Response) ([]byte, error) {
+func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessResponseToPlaintext(res *pb.PIR_Response) ([]byte, error) {
 	err := rlweStruct.UnmarshalResponseFromPB(res)
 	if err != nil {
 		return nil, err
@@ -137,7 +137,7 @@ func (rlweStruct *SimpleRLWEPIR) ProcessResponseToPlaintext(res *pb.PIR_Response
 	return nil, nil
 }
 
-func (rlweStruct *SimpleRLWEPIR) MarshalBinary() ([]byte, error) {
+func (rlweStruct *SimpleRLWE_PIR_Protocol) MarshalBinary() ([]byte, error) {
 	params_bytes, err := rlweStruct.parameters.MarshalBinary()
 	if err != nil {
 		return nil, err
@@ -174,7 +174,7 @@ func (rlweStruct *SimpleRLWEPIR) MarshalBinary() ([]byte, error) {
 	return result, nil
 }
 
-func (rlweStruct *SimpleRLWEPIR) UnmarshalBinary(data []byte) error {
+func (rlweStruct *SimpleRLWE_PIR_Protocol) UnmarshalBinary(data []byte) error {
 	// Helper function to read next byte slice
 	readNextBytes := func(data []byte) ([]byte, []byte, error) {
 		if len(data) < 8 {
@@ -220,7 +220,7 @@ func (rlweStruct *SimpleRLWEPIR) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
-func (rlweStruct *SimpleRLWEPIR) ProcessRequestAndReturnResponse(request *pb.PIR_Request, database [][]byte) (*pb.PIR_Response, error) {
+func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(request *pb.PIR_Request, database [][]byte) (*pb.PIR_Response, error) {
 
 	// TODO: Replace logging the time with Go Benchmarks
 	//   https://pkg.go.dev/testing#hdr-Benchmarks

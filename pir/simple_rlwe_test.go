@@ -6,19 +6,19 @@ import (
 )
 
 func TestSimpleRLWEPIRQuery_UnmarshallRequestFromPB(t *testing.T) {
-	chosen_PIR_Protocol := SimpleRLWEPIR{}
+	chosen_PIR_Protocol := SimpleRLWE_PIR_Protocol{}
 
 	pirRequest, err := chosen_PIR_Protocol.SampleGeneratePIRRequest()
 	require.NoError(t, err)
 
-	query := &SimpleRLWEPIR{}
+	query := &SimpleRLWE_PIR_Protocol{}
 
 	err = query.UnmarshallRequestFromPB(pirRequest)
 	require.NoError(t, err)
 }
 
 func TestPIR_Protocol_Simple_RLWE_ProcessRequestAndReturnResponse(t *testing.T) {
-	chosen_PIR_Protocol := SimpleRLWEPIR{}
+	chosen_PIR_Protocol := SimpleRLWE_PIR_Protocol{}
 
 	pirRequest, err := chosen_PIR_Protocol.SampleGeneratePIRRequest()
 	require.NoError(t, err)

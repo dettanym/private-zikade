@@ -9,7 +9,7 @@ import (
 )
 
 // From https://github.com/tuneinsight/lattigo/blob/master/schemes/bgv/examples_parameters.go
-func (rlweStruct *SimpleRLWEPIR) sampleGenerateParameters() (heint.Parameters, error) { //
+func (rlweStruct *SimpleRLWE_PIR_Protocol) sampleGenerateParameters() (heint.Parameters, error) { //
 	var (
 		// ExampleParameters128BitLogN14LogQP438 is an example parameters set with logN=14, logQP=438
 		// and a 16-bit plaintext modulus, offering 128-bit of security.
@@ -32,7 +32,7 @@ func (rlweStruct *SimpleRLWEPIR) sampleGenerateParameters() (heint.Parameters, e
 	return literal, nil
 }
 
-func (rlweStruct *SimpleRLWEPIR) sampleGenerateRLWECiphertext() (*rlwe.Ciphertext, error) {
+func (rlweStruct *SimpleRLWE_PIR_Protocol) sampleGenerateRLWECiphertext() (*rlwe.Ciphertext, error) {
 	prng, err := sampling.NewPRNG()
 	if err != nil {
 		return nil, err
@@ -50,7 +50,7 @@ func (rlweStruct *SimpleRLWEPIR) sampleGenerateRLWECiphertext() (*rlwe.Ciphertex
 	return ct, nil
 }
 
-func (rlweStruct *SimpleRLWEPIR) sampleGenerateEvaluationKeys() (*rlwe.MemEvaluationKeySet, error) {
+func (rlweStruct *SimpleRLWE_PIR_Protocol) sampleGenerateEvaluationKeys() (*rlwe.MemEvaluationKeySet, error) {
 	//params, err := rlweStruct.sampleGenerateParameters()
 	//if err != nil {
 	//	return nil, err
@@ -70,7 +70,7 @@ func (rlweStruct *SimpleRLWEPIR) sampleGenerateEvaluationKeys() (*rlwe.MemEvalua
 	return memKey, nil
 }
 
-func (rlweStruct *SimpleRLWEPIR) SampleGeneratePIRRequest() (*pb.PIR_Request, error) {
+func (rlweStruct *SimpleRLWE_PIR_Protocol) SampleGeneratePIRRequest() (*pb.PIR_Request, error) {
 	parameters, err := rlweStruct.sampleGenerateParameters()
 	if err != nil {
 		return nil, err
