@@ -17,7 +17,15 @@ type SimpleRLWE_PIR_Protocol struct {
 	PIR_Protocol
 
 	log2_num_rows int
-	parameters    heint.Parameters
+	// TODO: @Rasoul Currently, these parameters are *sent by the client* in the first request, so
+	//  they cannot depend on the database size, and it looks like this in the ProcessRequestAndReturnResponse code below.
+	//  Then potentially, we can hardcode these parameters (i.e. in the initialization function below) and
+	//  avoid sending them over the network, or even have the server send them to the client in the response, if anything
+	//  does depend on the database.
+	//  Once we properly abstract the code to initialize all variables from
+	//  ProcessRequestAndReturnResponse to another function (see my todos below), then we can call that function from
+	//  our initialization below.
+	parameters heint.Parameters
 
 	secret_key rlwe.SecretKey
 
@@ -27,6 +35,10 @@ type SimpleRLWE_PIR_Protocol struct {
 }
 
 func NewSimpleRLWE_PIR_Protocol(log2_num_rows int) *SimpleRLWE_PIR_Protocol {
+	// TODO: @Miti Consider determining the number of rows ourselves using the DB
+	//  will need to change the test functions accordingly.
+	// num_rows := len(database)
+	// log2_num_rows := int(math.Ceil(math.Log2(float64(num_rows))))
 	return &SimpleRLWE_PIR_Protocol{log2_num_rows: log2_num_rows}
 }
 
@@ -173,8 +185,6 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) GenerateRequestFromQuery(requested_ro
 	}
 	rlweStruct.encrypted_query = ciphertext
 
-	// log2_num_cts := int(math.Log2(float64(len(rlweStruct.encrypted_query))))
-	// log2_bits_per_ct := rlweStruct.log2_num_rows - log2_num_cts
 	keys, err := rlweStruct.generateEvaluationKeys(log2_bits_per_ct)
 	if err != nil {
 		return nil, err
@@ -241,6 +251,10 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 		indicator_bits = append(indicator_bits, indicator_bits_slice...)
 	}
 
+	// TODO: @Rasoul, between here and the loops, you can abstract all of this code, of setting variables,
+	//  into a function. You can attach any variables that you need later on in this function into the rlweStruct.
+	//  You can also consider which of the variables you initialized before the for loop above (e.g. num_cts or log2_num_cts)
+	//  can be useful to attach to the rlweStruct, to avoid duplicating code to compute them in other functions.
 	num_rows := 1 << rlweStruct.log2_num_rows
 
 	bytes_per_coefficient := int(math.Floor(math.Log2(float64(params.PlaintextModulus())))) / 8
@@ -256,6 +270,9 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 
 	rlweStruct.response_ciphertexts = make(structs.Vector[rlwe.Ciphertext], number_of_response_ciphertexts)
 
+	// TODO: @Rasoul, similarly, you can abstract the logic below on encoding the DB as plaintext, away into another function.
+	//  Later on, we can then only run that function as frequently as the DB changes.
+	//  It will also make it easier to check the decoding logic in ProcessResponseToPlaintext.
 	// WARNING: Inner loop is not paralleliable
 	for k := 0; k < number_of_response_ciphertexts; k++ {
 		for i := 0; i < num_rows; i++ {
