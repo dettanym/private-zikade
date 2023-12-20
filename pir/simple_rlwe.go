@@ -222,7 +222,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessResponseToPlaintext(res *pb.PI
 
 func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(request *pb.PIR_Request, database [][]byte) (*pb.PIR_Response, error) {
 
-	// TODO: Replace logging the time with Go Benchmarks
+	// TODO: @Miti Replace logging the time with Go Benchmarks
 	//   https://pkg.go.dev/testing#hdr-Benchmarks
 	start := time.Now()
 
