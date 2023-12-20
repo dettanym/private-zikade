@@ -184,18 +184,17 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) GenerateRequestFromQuery(requested_ro
 	return rlweStruct.MarshalRequestToPB()
 }
 
+// TODO: @Rasoul: test that this returns a row of the DB input into ProcessRequestAndReturnResponse
 func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessResponseToPlaintext(res *pb.PIR_Response) ([]byte, error) {
 	err := rlweStruct.UnmarshalResponseFromPB(res)
 	if err != nil {
 		return nil, err
 	}
 
-	// println(rlweStruct.response_ciphertexts)
-	// TODO: @Rasoul: this should return a row of the DB input into ProcessRequestAndReturnResponse
 	bytes_per_coefficient := int(math.Floor(math.Log2(float64(rlweStruct.parameters.PlaintextModulus())))) / 8
 	decryptor := heint.NewDecryptor(rlweStruct.parameters, &rlweStruct.secret_key)
 	decoder := heint.NewEncoder(rlweStruct.parameters)
-	var response []byte
+	var plaintextBytes []byte
 	for i := range rlweStruct.response_ciphertexts {
 		plaintext := decryptor.DecryptNew(&rlweStruct.response_ciphertexts[i])
 		temp_response := make([]uint64, rlweStruct.parameters.N())
@@ -204,11 +203,11 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessResponseToPlaintext(res *pb.PI
 		for j := range temp_response {
 			temp_bytes := make([]byte, 8)
 			binary.LittleEndian.PutUint64(temp_bytes, temp_response[j])
-			response = append(response, temp_bytes[:bytes_per_coefficient]...)
+			plaintextBytes = append(plaintextBytes, temp_bytes[:bytes_per_coefficient]...)
 		}
 	}
 
-	return response, nil
+	return plaintextBytes, nil
 }
 
 func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(request *pb.PIR_Request, database [][]byte) (*pb.PIR_Response, error) {
