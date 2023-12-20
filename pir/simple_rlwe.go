@@ -23,7 +23,7 @@ type SimpleRLWE_PIR_Protocol struct {
 
 	evaluation_keys      *rlwe.MemEvaluationKeySet
 	encrypted_query      []rlwe.Ciphertext
-	response_ciphertexts []rlwe.Ciphertext
+	response_ciphertexts structs.Vector[rlwe.Ciphertext]
 }
 
 func NewSimpleRLWE_PIR_Protocol(log2_num_rows int) *SimpleRLWE_PIR_Protocol {
@@ -104,7 +104,21 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) MarshalResponseToPB() (*pb.PIR_Respon
 	// 	ctBytesArray[i] = ctBytes
 	// }
 	// response := &pb.PIR_Response{Ciphertexts: ctBytesArray}
-	ciphertexts_bytes, err := structs.Vector[rlwe.Ciphertext](rlweStruct.response_ciphertexts).MarshalBinary()
+	// TODO @Rasoul: the reason why I did the code above, is so that you can use the Lattigo marshal function
+	//  to marshal *each* ciphertext and then set the PIR response to this byte array. Using the struct.Vector
+	//  approach first *type-casts* the array into a Lattigo (fancy) vector of ciphertexts.
+	//  This type-casting (or type assertion in Golang) occurs dynamically, so any errors won't be caught during the build phase,
+	//	so it can lead to a run-time panic.
+	//  See here: https://go.dev/ref/spec#Type_assertions
+	//  General advice: do not use type casts unless you are sure that the type cast holds
+	//  they lead to panics at best and undefined behaviour or overflows at worst.
+	//  so I have converted the type of rlweStruct.response_ciphertexts
+	//  from being an array to being a structs.Vector (not a normal vector).
+	//  This code then marshals the entire vector using the built-ins for lattigo.
+	//  (Note that when I replaced it with the code above, I thought it used the standard vector built-in, which would
+	//   mean it used the standard marshal / unmarshal functions, and I'd rather use the marshal / unmarshal from Lattigo,
+	//  even if it was for a single ciphertext.)
+	ciphertexts_bytes, err := rlweStruct.response_ciphertexts.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
@@ -113,18 +127,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) MarshalResponseToPB() (*pb.PIR_Respon
 }
 
 func (rlweStruct *SimpleRLWE_PIR_Protocol) UnmarshalResponseFromPB(res *pb.PIR_Response) error {
-	// ctBytesArray := res.GetCiphertexts()
-	// rlweStruct.response_ciphertexts = make([]rlwe.Ciphertext, len(ctBytesArray))
-	// for i, ctBytes := range ctBytesArray {
-	// 	ct := rlweStruct.response_ciphertexts[i]
-	// 	err := ct.UnmarshalBinary(ctBytes)
-	// 	if err != nil {
-	// 		return fmt.Errorf("error unmarshalling %dth ciphertext. Error: %s", i, err)
-	// 	}
-	// }
-	var response_encrypted structs.Vector[rlwe.Ciphertext]
-	err := response_encrypted.UnmarshalBinary(res.GetCiphertexts())
-	rlweStruct.response_ciphertexts = response_encrypted
+	err := rlweStruct.response_ciphertexts.UnmarshalBinary(res.GetCiphertexts())
 	if err != nil {
 		return err
 	}
@@ -248,7 +251,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 	max_len_database_entries := maxLengthDBRows(database)
 	number_of_response_ciphertexts := (max_len_database_entries + bytes_per_ciphertext - 1) / bytes_per_ciphertext
 
-	rlweStruct.response_ciphertexts = make([]rlwe.Ciphertext, number_of_response_ciphertexts)
+	rlweStruct.response_ciphertexts = make(structs.Vector[rlwe.Ciphertext], number_of_response_ciphertexts)
 
 	// WARNING: Inner loop is not paralleliable
 	for k := 0; k < number_of_response_ciphertexts; k++ {
@@ -292,12 +295,6 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 		}
 	}
 
-	//// println("Response:", ciphertexts[0].BinarySize()/1024, "KB")
-	//response_bytes, err := structs.Vector[rlwe.Ciphertext](response_ciphertexts).MarshalBinary()
-	//if err != nil {
-	//	return nil, err
-	//}
-	// return response_bytes
 	response, err := rlweStruct.MarshalResponseToPB()
 	if err != nil {
 		return nil, err
