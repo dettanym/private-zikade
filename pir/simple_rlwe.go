@@ -162,6 +162,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) GenerateRequestFromQuery(requested_ro
 		}
 		query_plaintext := heint.NewPlaintext(rlweStruct.parameters, rlweStruct.parameters.MaxLevel())
 		query_plaintext.IsBatched = false
+		// TODO: Rasoul please handle the error here.
 		encoder.Encode(query_encoded, query_plaintext)
 		plaintexts[i] = query_plaintext
 	}
@@ -198,6 +199,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessResponseToPlaintext(res *pb.PI
 	for i := range rlweStruct.response_ciphertexts {
 		plaintext := decryptor.DecryptNew(&rlweStruct.response_ciphertexts[i])
 		temp_response := make([]uint64, rlweStruct.parameters.N())
+		// TODO: Rasoul please handle the error here.
 		decoder.Decode(plaintext, temp_response)
 		for j := range temp_response {
 			temp_bytes := make([]byte, 8)
@@ -244,6 +246,8 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 
 	bytes_per_coefficient := int(math.Floor(math.Log2(float64(params.PlaintextModulus())))) / 8
 	if bytes_per_coefficient > 8 {
+		// TODO: @Rasoul: throw a descriptive error, e.g. params.PlaintextModulus() needs to be set greater than XYZ.
+		//  Or better, ensure that it never happens by setting that variable correctly.
 		panic("bytes_per_coefficient > 8")
 	}
 	bytes_per_ciphertext := bytes_per_coefficient * N
