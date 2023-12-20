@@ -245,14 +245,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 	}
 	bytes_per_ciphertext := bytes_per_coefficient * N
 
-	// TODO: Instead of calculating it like this, we should have a struct for the database that stores this information
-	max_len_database_entries := len(database[0])
-	for i := 1; i < num_rows; i++ {
-		if len(database[i]) > max_len_database_entries {
-			max_len_database_entries = len(database[i])
-		}
-	}
-
+	max_len_database_entries := maxLengthDBRows(database)
 	number_of_response_ciphertexts := (max_len_database_entries + bytes_per_ciphertext - 1) / bytes_per_ciphertext
 
 	rlweStruct.response_ciphertexts = make([]rlwe.Ciphertext, number_of_response_ciphertexts)

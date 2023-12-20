@@ -39,7 +39,8 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) sampleGenerateRLWECiphertextVector() 
 		return nil, err
 	}
 
-	// TODO: The degree and level below are set on the basis of the heint benchmarks from here:
+	// TODO: @Rasoul CHECK THIS
+	//  The degree and level below are set on the basis of the heint benchmarks from here:
 	//  https://github.com/tuneinsight/lattigo/blob/master/he/heint/heint_benchmark_test.go#L244
 	//   Set them meaningfully.
 	ct := rlwe.NewCiphertextRandom(prng, rlweStruct.parameters, 1, rlweStruct.parameters.MaxLevel())
@@ -108,4 +109,19 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) SampleGeneratePIRRequest() (*pb.PIR_R
 	}
 
 	return pirRequest, nil
+}
+
+// For the routing case, the normalization algorithm will ensure that all rows have the same number of peer records.
+// Potentially, a record can have many multiaddresses, so that could be the only reason why the size of a row can vary (routing case).
+// Similarly, a CID can be provided by multiple peers, so that is a reason why the size of a row can vary for the provider advertisements case.
+// It's perfectly reasonable to use this function for each request, and optimize it later.
+func maxLengthDBRows(database [][]byte) int {
+	num_rows := len(database)
+	max_len_database_entries := len(database[0])
+	for i := 1; i < num_rows; i++ {
+		if len(database[i]) > max_len_database_entries {
+			max_len_database_entries = len(database[i])
+		}
+	}
+	return max_len_database_entries
 }
