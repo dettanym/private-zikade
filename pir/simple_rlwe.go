@@ -264,7 +264,6 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 
 	log2_num_cts := int(math.Log2(float64(rlweStruct.num_cts())))
 
-	N := rlweStruct.parameters.N()
 	evaluator := heint.NewEvaluator(rlweStruct.parameters, evaluation_keys)
 
 	var indicator_bits []*rlwe.Ciphertext
@@ -285,17 +284,17 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 		indicator_bits = append(indicator_bits, indicator_bits_slice...)
 	}
 
-	bytes_per_ciphertext := rlweStruct.bytes_per_coefficient() * N
+	// bytes_per_ciphertext := rlweStruct.bytes_per_coefficient() * N
 	max_len_database_entries := maxLengthDBRows(database)
-	number_of_response_ciphertexts := (max_len_database_entries + bytes_per_ciphertext - 1) / bytes_per_ciphertext
+	number_of_response_ciphertexts := (max_len_database_entries + rlweStruct.bytes_per_ciphertext() - 1) / rlweStruct.bytes_per_ciphertext()
 	rlweStruct.response_ciphertexts = make(structs.Vector[rlwe.Ciphertext], number_of_response_ciphertexts)
 
 	// WARNING: Inner loop is not paralleliable
 	for k := 0; k < number_of_response_ciphertexts; k++ {
 		for i := 0; i < rlweStruct.num_rows(); i++ {
 			// encoding the row of the database into the coefficients of a plaintext
-			start_index := bytes_per_ciphertext * k
-			end_index := bytes_per_ciphertext * (k + 1)
+			start_index := rlweStruct.bytes_per_ciphertext() * k
+			end_index := rlweStruct.bytes_per_ciphertext() * (k + 1)
 			if end_index > len(database[i]) {
 				end_index = len(database[i])
 			}
