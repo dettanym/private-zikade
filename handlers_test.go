@@ -98,23 +98,11 @@ func BenchmarkDHT_handleFindPeer(b *testing.B) {
 func TestDHT_handleFindPeer_happy_path(t *testing.T) {
 	d := newTestDHT(t)
 
-	// add peer to routing table but don't add first peer. The first peer
-	// will be the one who's making the request below. If we added it to
-	// the routing table it could be among the closest peers to the random
-	// key below. We filter out the requesting peer from the response of
-	// closer peers. This means we can't assert for exactly 20 closer peers
-	// below.
-	pid := newPeerID(t)
-	queryingPeer := pid
+	queryingPeer := newPeerID(t)
 
-	a, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", 2000))
-	require.NoError(t, err)
+	peers := fillRoutingTable(t, d, 250)
 
-	d.host.Peerstore().AddAddr(pid, a, time.Hour)
-
-	peers := fillRoutingTable(t, d, 249)
-
-	assert.Equal(t, len(peers)+1, d.host.Peerstore().PeersWithAddrs().Len())
+	assert.Equal(t, len(peers), d.host.Peerstore().PeersWithAddrs().Len())
 	printCPLAndBucketSizes(d, peers)
 
 	req := &pb.Message{
@@ -1490,24 +1478,37 @@ func TestDHT_normalizeRTJoinedWithPeerStore(t *testing.T) {
 func TestDHT_handlePrivateFindPeer(t *testing.T) {
 	d := newTestDHT(t)
 
+	queryingPeer := newPeerID(t)
+
 	peers := fillRoutingTable(t, d, 250)
 
-	chosen_PIR_Protocol := &pir.SimpleRLWE_PIR_Protocol{}
+	assert.Equal(t, len(peers), d.host.Peerstore().PeersWithAddrs().Len())
+	printCPLAndBucketSizes(d, peers)
 
-	pirRequest, err := chosen_PIR_Protocol.SampleGeneratePIRRequest()
-	require.NoError(t, err)
+	// First generate PIR request
+	keyBytes := []byte("random-key")
 
-	req := &pb.Message{
+	targetKey := kadt.PeerID(keyBytes).Key()
+	serverKey := kadt.PeerID(queryingPeer).Key()
+	cpl := uint64(targetKey.CommonPrefixLength(serverKey))
+
+	chosenPirProtocol := pir.NewSimpleRLWE_PIR_Protocol(8)
+	pirRequest, err := chosenPirProtocol.GenerateRequestFromQuery(int(cpl))
+	if err != nil {
+		return
+	}
+
+	msg := &pb.Message{
 		Type:               pb.Message_PRIVATE_FIND_NODE,
 		PIR_Message_ID:     1234,
 		CloserPeersRequest: pirRequest,
 	}
 
-	resp, err := d.handlePrivateFindPeer(context.Background(), peers[0], req)
+	resp, err := d.handlePrivateFindPeer(context.Background(), peers[0], msg)
 	require.NoError(t, err)
 
 	assert.Equal(t, pb.Message_PRIVATE_FIND_NODE, resp.Type)
-	assert.Equal(t, resp.PIR_Message_ID, req.PIR_Message_ID)
+	assert.Equal(t, resp.PIR_Message_ID, msg.PIR_Message_ID)
 
 	//assert.Nil(t, resp.Record)
 	//assert.Len(t, resp.CloserPeers, d.cfg.BucketSize)
