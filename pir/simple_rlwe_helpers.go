@@ -60,6 +60,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) encryptRLWEPlaintexts(plaintexts []*r
 	return ciphertexts, nil
 }
 
+// TODO: @Rasoul --- test this: it throws a panic: key is not correct: sk ring degree does not match params ring degree
 func (rlweStruct *SimpleRLWE_PIR_Protocol) generateEvaluationKeys(log2_bits_per_ct int) (*rlwe.MemEvaluationKeySet, error) {
 	kgen := rlwe.NewKeyGenerator(rlweStruct.parameters)
 
