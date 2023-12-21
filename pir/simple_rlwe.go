@@ -48,8 +48,7 @@ func NewSimpleRLWE_PIR_Protocol(log2_num_rows int) *SimpleRLWE_PIR_Protocol {
 	return &SimpleRLWE_PIR_Protocol{log2_num_rows: log2_num_rows}
 }
 
-func (rlweStruct *SimpleRLWE_PIR_Protocol) MarshalRequestToPB() (*pb.PIR_Request, error) {
-
+func (rlweStruct *SimpleRLWE_PIR_Protocol) marshalRequestToPB() (*pb.PIR_Request, error) {
 	params_bytes, err := rlweStruct.parameters.MarshalBinary()
 	if err != nil {
 		return nil, err
@@ -75,7 +74,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) MarshalRequestToPB() (*pb.PIR_Request
 	return &pirRequest, nil
 }
 
-func (rlweStruct *SimpleRLWE_PIR_Protocol) UnmarshallRequestFromPB(req *pb.PIR_Request) error {
+func (rlweStruct *SimpleRLWE_PIR_Protocol) unmarshallRequestFromPB(req *pb.PIR_Request) error {
 
 	rlweStruct.log2_num_rows = int(req.GetLog2NumRows())
 
@@ -112,7 +111,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) UnmarshallRequestFromPB(req *pb.PIR_R
 	return nil
 }
 
-func (rlweStruct *SimpleRLWE_PIR_Protocol) MarshalResponseToPB() (*pb.PIR_Response, error) {
+func (rlweStruct *SimpleRLWE_PIR_Protocol) marshalResponseToPB() (*pb.PIR_Response, error) {
 	ciphertexts_bytes, err := rlweStruct.response_ciphertexts.MarshalBinary()
 	if err != nil {
 		return nil, err
@@ -121,7 +120,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) MarshalResponseToPB() (*pb.PIR_Respon
 	return response, nil
 }
 
-func (rlweStruct *SimpleRLWE_PIR_Protocol) UnmarshalResponseFromPB(res *pb.PIR_Response) error {
+func (rlweStruct *SimpleRLWE_PIR_Protocol) unmarshallResponseFromPB(res *pb.PIR_Response) error {
 	err := rlweStruct.response_ciphertexts.UnmarshalBinary(res.GetCiphertexts())
 	if err != nil {
 		return err
@@ -177,7 +176,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) GenerateRequestFromQuery(requested_ro
 	}
 	rlweStruct.evaluation_keys = keys
 
-	return rlweStruct.MarshalRequestToPB()
+	return rlweStruct.marshalRequestToPB()
 }
 
 // Encodes byte_array from [start_index, end_index) into a plaintext
@@ -229,7 +228,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) PlaintextToBytesArray(plaintext *rlwe
 }
 
 func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessResponseToPlaintext(res *pb.PIR_Response) ([]byte, error) {
-	err := rlweStruct.UnmarshalResponseFromPB(res)
+	err := rlweStruct.unmarshallResponseFromPB(res)
 	if err != nil {
 		return nil, fmt.Errorf("could not unmarshal response from PB %s", err)
 	}
@@ -254,7 +253,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 	//   https://pkg.go.dev/testing#hdr-Benchmarks
 	start := time.Now()
 
-	err := rlweStruct.UnmarshallRequestFromPB(request)
+	err := rlweStruct.unmarshallRequestFromPB(request)
 	if err != nil {
 		return nil, err
 	}
@@ -320,7 +319,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 		}
 	}
 
-	response, err := rlweStruct.MarshalResponseToPB()
+	response, err := rlweStruct.marshalResponseToPB()
 	if err != nil {
 		return nil, err
 	}
