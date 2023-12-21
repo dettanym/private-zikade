@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ipfs/go-cid"
 	"github.com/plprobelab/zikade/pir"
 	"reflect"
 	"strconv"
@@ -1514,4 +1515,54 @@ func TestDHT_handlePrivateFindPeer(t *testing.T) {
 	//assert.Equal(t, len(resp.CloserPeers[0].Addrs), 1)
 	//printCloserPeers(resp)
 
+}
+
+func TestDHT_handlePrivateGetProviders(t *testing.T) {
+	d := newTestDHT(t)
+
+	queryingPeer := newPeerID(t)
+
+	peers := fillRoutingTable(t, d, 250)
+
+	assert.Equal(t, len(peers), d.host.Peerstore().PeersWithAddrs().Len())
+	printCPLAndBucketSizes(d, peers)
+
+	// First generate PIR request
+	keyBytes := []byte("random-key")
+
+	targetKey := kadt.PeerID(keyBytes).Key()
+	serverKey := kadt.PeerID(queryingPeer).Key()
+	cpl := uint64(targetKey.CommonPrefixLength(serverKey))
+
+	chosenPirProtocolPeerRouting := pir.NewSimpleRLWE_PIR_Protocol(8)
+	closerPeersRequest, err := chosenPirProtocolPeerRouting.GenerateRequestFromQuery(int(cpl))
+	if err != nil {
+		return
+	}
+
+	var fileCID cid.Cid
+	cidHashed := string(fileCID.Hash())
+	// TODO: Interpret the first ten bits of this string for provider advertisements.
+	dsKey := newDatastoreKey("providers", cidHashed).String()
+
+	// targetKeyForProviderAds := []byte(targetKey.HexString())
+	// newDatastoreKey("providers", targetKeyForProviderAds).Key()
+	chosenPirProtocolProviderRouting := pir.NewSimpleRLWE_PIR_Protocol(12)
+	providerPeersRequest, err := chosenPirProtocolProviderRouting.GenerateRequestFromQueryString(dsKey)
+	if err != nil {
+		return
+	}
+
+	msg := &pb.Message{
+		Type:                 pb.Message_PRIVATE_FIND_NODE,
+		PIR_Message_ID:       1234,
+		CloserPeersRequest:   closerPeersRequest,
+		ProviderPeersRequest: providerPeersRequest,
+	}
+	//
+	resp, err := d.handlePrivateGetProviderRecords(context.Background(), queryingPeer, msg)
+	require.NoError(t, err)
+
+	assert.Equal(t, pb.Message_PRIVATE_GET_PROVIDERS, resp.Type)
+	assert.Equal(t, resp.PIR_Message_ID, msg.PIR_Message_ID)
 }
