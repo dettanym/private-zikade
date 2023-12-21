@@ -13,7 +13,7 @@ func TestSimpleRLWEPIRQuery_UnmarshallRequestFromPB(t *testing.T) {
 	pirRequest, err := chosen_PIR_Protocol.SampleGeneratePIRRequest()
 	require.NoError(t, err)
 
-	query := NewSimpleRLWE_PIR_Protocol(number_of_rows)
+	query := SimpleRLWE_PIR_Protocol{}
 
 	err = query.UnmarshallRequestFromPB(pirRequest)
 	require.NoError(t, err)

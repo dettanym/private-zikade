@@ -71,6 +71,9 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) generateEvaluationKeys(log2_bits_per_
 }
 
 func (rlweStruct *SimpleRLWE_PIR_Protocol) SampleGeneratePIRRequest() (*pb.PIR_Request, error) {
+
+	// rlweStruct.log2_num_rows = log2_num_rows
+
 	err := rlweStruct.generateParameters()
 	if err != nil {
 		return nil, err
@@ -102,7 +105,8 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) SampleGeneratePIRRequest() (*pb.PIR_R
 	}
 
 	pirRequest := &pb.PIR_Request{
-		Parameters: parametersBinary,
+		Log2NumRows: int64(rlweStruct.log2_num_rows),
+		Parameters:  parametersBinary,
 		SchemeDependent: &pb.PIR_Request_RLWEEvaluationKeys{
 			RLWEEvaluationKeys: evKeyBinary},
 		EncryptedQuery: ciphertextBinary,

@@ -17,32 +17,39 @@ type SimpleRLWE_PIR_Protocol struct {
 	PIR_Protocol
 
 	log2_num_rows int
-	// TODO: @Rasoul Currently, these parameters are *sent by the client* in the first request, so
-	//  they cannot depend on the database size, and it looks like this in the ProcessRequestAndReturnResponse code below.
-	//  Then potentially, we can hardcode these parameters (i.e. in the initialization function below) and
-	//  avoid sending them over the network, or even have the server send them to the client in the response, if anything
-	//  does depend on the database.
-	//  Once we properly abstract the code to initialize all variables from
-	//  ProcessRequestAndReturnResponse to another function (see my todos below), then we can call that function from
-	//  our initialization below.
+
 	parameters heint.Parameters
 
 	secret_key rlwe.SecretKey
 
 	evaluation_keys      *rlwe.MemEvaluationKeySet
-	encrypted_query      []rlwe.Ciphertext
+	encrypted_query      structs.Vector[rlwe.Ciphertext]
 	response_ciphertexts structs.Vector[rlwe.Ciphertext]
 }
 
+func (rlweStruct *SimpleRLWE_PIR_Protocol) num_rows() int {
+	return 1 << rlweStruct.log2_num_rows
+}
+
+func (rlweStruct *SimpleRLWE_PIR_Protocol) num_cts() int {
+	return len(rlweStruct.encrypted_query)
+}
+
+func (rlweStruct *SimpleRLWE_PIR_Protocol) bytes_per_coefficient() int {
+	return int(math.Floor(math.Log2(float64(rlweStruct.parameters.PlaintextModulus())))) / 8
+}
+
+func (rlweStruct *SimpleRLWE_PIR_Protocol) bytes_per_ciphertext() int {
+	return rlweStruct.bytes_per_coefficient() * rlweStruct.parameters.N()
+}
+
+// Use by client to create a new PIR request
 func NewSimpleRLWE_PIR_Protocol(log2_num_rows int) *SimpleRLWE_PIR_Protocol {
-	// TODO: @Miti Consider determining the number of rows ourselves using the DB
-	//  will need to change the test functions accordingly.
-	// num_rows := len(database)
-	// log2_num_rows := int(math.Ceil(math.Log2(float64(num_rows))))
 	return &SimpleRLWE_PIR_Protocol{log2_num_rows: log2_num_rows}
 }
 
 func (rlweStruct *SimpleRLWE_PIR_Protocol) MarshalRequestToPB() (*pb.PIR_Request, error) {
+
 	params_bytes, err := rlweStruct.parameters.MarshalBinary()
 	if err != nil {
 		return nil, err
@@ -57,7 +64,8 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) MarshalRequestToPB() (*pb.PIR_Request
 	}
 
 	pirRequest := pb.PIR_Request{
-		Parameters: params_bytes,
+		Log2NumRows: int64(rlweStruct.log2_num_rows),
+		Parameters:  params_bytes,
 		SchemeDependent: &pb.PIR_Request_RLWEEvaluationKeys{
 			RLWEEvaluationKeys: evk_bytes,
 		},
@@ -69,9 +77,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) MarshalRequestToPB() (*pb.PIR_Request
 
 func (rlweStruct *SimpleRLWE_PIR_Protocol) UnmarshallRequestFromPB(req *pb.PIR_Request) error {
 
-	if rlweStruct.log2_num_rows == 0 {
-		panic("log2_num_rows is not set")
-	}
+	rlweStruct.log2_num_rows = int(req.GetLog2NumRows())
 
 	err := rlweStruct.parameters.UnmarshalBinary(req.GetParameters())
 	if err != nil {
@@ -107,29 +113,6 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) UnmarshallRequestFromPB(req *pb.PIR_R
 }
 
 func (rlweStruct *SimpleRLWE_PIR_Protocol) MarshalResponseToPB() (*pb.PIR_Response, error) {
-	// ctBytesArray := make([][]byte, len(rlweStruct.response_ciphertexts))
-	// for i, ct := range rlweStruct.response_ciphertexts {
-	// 	ctBytes, err := ct.MarshalBinary()
-	// 	if err != nil {
-	// 		return nil, fmt.Errorf("error marshalling %dth ciphertext. Error: %s", i, err)
-	// 	}
-	// 	ctBytesArray[i] = ctBytes
-	// }
-	// response := &pb.PIR_Response{Ciphertexts: ctBytesArray}
-	// TODO @Rasoul: the reason why I did the code above, is so that you can use the Lattigo marshal function
-	//  to marshal *each* ciphertext and then set the PIR response to this byte array. Using the struct.Vector
-	//  approach first *type-casts* the array into a Lattigo (fancy) vector of ciphertexts.
-	//  This type-casting (or type assertion in Golang) occurs dynamically, so any errors won't be caught during the build phase,
-	//	so it can lead to a run-time panic.
-	//  See here: https://go.dev/ref/spec#Type_assertions
-	//  General advice: do not use type casts unless you are sure that the type cast holds
-	//  they lead to panics at best and undefined behaviour or overflows at worst.
-	//  so I have converted the type of rlweStruct.response_ciphertexts
-	//  from being an array to being a structs.Vector (not a normal vector).
-	//  This code then marshals the entire vector using the built-ins for lattigo.
-	//  (Note that when I replaced it with the code above, I thought it used the standard vector built-in, which would
-	//   mean it used the standard marshal / unmarshal functions, and I'd rather use the marshal / unmarshal from Lattigo,
-	//  even if it was for a single ciphertext.)
 	ciphertexts_bytes, err := rlweStruct.response_ciphertexts.MarshalBinary()
 	if err != nil {
 		return nil, err
@@ -155,7 +138,6 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) GenerateRequestFromQuery(requested_ro
 
 	encoder := heint.NewEncoder(rlweStruct.parameters)
 	num_slots := rlweStruct.parameters.MaxSlots()
-	// num_rows := 1 << rlweStruct.log2_num_rows
 	// TODO: Find the best value for this parameter
 	log_num_cts := 2
 	num_cts := 1 << log_num_cts
@@ -174,8 +156,10 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) GenerateRequestFromQuery(requested_ro
 		}
 		query_plaintext := heint.NewPlaintext(rlweStruct.parameters, rlweStruct.parameters.MaxLevel())
 		query_plaintext.IsBatched = false
-		// TODO: Rasoul please handle the error here.
-		encoder.Encode(query_encoded, query_plaintext)
+		err := encoder.Encode(query_encoded, query_plaintext)
+		if err != nil {
+			return nil, fmt.Errorf("could not encode query ciphertext %s", err)
+		}
 		plaintexts[i] = query_plaintext
 	}
 
@@ -194,30 +178,73 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) GenerateRequestFromQuery(requested_ro
 	return rlweStruct.MarshalRequestToPB()
 }
 
+// Encodes byte_array from [start_index, end_index) into a plaintext
+func (rlweStruct *SimpleRLWE_PIR_Protocol) BytesArrayToPlaintext(byte_array []byte, start_index int, end_index int) (*rlwe.Plaintext, error) {
+	if start_index < 0 || end_index > len(byte_array) || start_index > end_index {
+		return nil, fmt.Errorf("start_index < 0 || end_index > len(byte_array) || start_index > end_index")
+	}
+	N := rlweStruct.parameters.N()
+	coeffs := make([]uint64, N)
+	for j := 0; j < N; j++ {
+		the_bytes := make([]byte, 8)
+		if rlweStruct.bytes_per_coefficient() > 8 {
+			panic("rlweStruct.bytes_per_coefficient() > 8, Code can not handle coefficients larger than 64 bits")
+		}
+		for b := 0; b < rlweStruct.bytes_per_coefficient(); b++ {
+			if j*rlweStruct.bytes_per_coefficient()+b < end_index {
+				the_bytes[b] = byte_array[start_index+j*rlweStruct.bytes_per_coefficient()+b]
+			}
+		}
+		coeffs[j] = binary.LittleEndian.Uint64(the_bytes)
+		if coeffs[j] > uint64(rlweStruct.parameters.PlaintextModulus()) {
+			panic("coeffs[j] > uint64(params.PlaintextModulus()), Coefficients are larger than the plaintext modulus")
+		}
+	}
+	row_data_plaintext := heint.NewPlaintext(rlweStruct.parameters, rlweStruct.parameters.MaxLevel())
+	row_data_plaintext.IsBatched = false
+	encoder := heint.NewEncoder(rlweStruct.parameters)
+	err := encoder.Encode(coeffs, row_data_plaintext)
+	if err != nil {
+		return nil, fmt.Errorf("could not encode a row of plaintext data %s", err)
+	}
+	return row_data_plaintext, nil
+}
+
+func (rlweStruct *SimpleRLWE_PIR_Protocol) PlaintextToBytesArray(plaintext *rlwe.Plaintext) ([]byte, error) {
+	decoder := heint.NewEncoder(rlweStruct.parameters)
+	temp_response := make([]uint64, rlweStruct.parameters.N())
+	err := decoder.Decode(plaintext, temp_response)
+	if err != nil {
+		return nil, fmt.Errorf("could not decode response ciphertext %s", err)
+	}
+	var plaintextBytes []byte
+	for j := range temp_response {
+		temp_bytes := make([]byte, 8)
+		binary.LittleEndian.PutUint64(temp_bytes, temp_response[j])
+		plaintextBytes = append(plaintextBytes, temp_bytes[:rlweStruct.bytes_per_coefficient()]...)
+	}
+	return plaintextBytes, nil
+}
+
 // TODO: @Rasoul: test that this returns a row of the DB input into ProcessRequestAndReturnResponse
 func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessResponseToPlaintext(res *pb.PIR_Response) ([]byte, error) {
 	err := rlweStruct.UnmarshalResponseFromPB(res)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not unmarshal response from PB %s", err)
 	}
 
-	bytes_per_coefficient := int(math.Floor(math.Log2(float64(rlweStruct.parameters.PlaintextModulus())))) / 8
 	decryptor := heint.NewDecryptor(rlweStruct.parameters, &rlweStruct.secret_key)
-	decoder := heint.NewEncoder(rlweStruct.parameters)
-	var plaintextBytes []byte
+	var allPlaintextBytes []byte
 	for i := range rlweStruct.response_ciphertexts {
 		plaintext := decryptor.DecryptNew(&rlweStruct.response_ciphertexts[i])
-		temp_response := make([]uint64, rlweStruct.parameters.N())
-		// TODO: Rasoul please handle the error here.
-		decoder.Decode(plaintext, temp_response)
-		for j := range temp_response {
-			temp_bytes := make([]byte, 8)
-			binary.LittleEndian.PutUint64(temp_bytes, temp_response[j])
-			plaintextBytes = append(plaintextBytes, temp_bytes[:bytes_per_coefficient]...)
+		slice, err := rlweStruct.PlaintextToBytesArray(plaintext)
+		if err != nil {
+			return nil, err
 		}
+		allPlaintextBytes = append(allPlaintextBytes, slice...)
 	}
 
-	return plaintextBytes, nil
+	return allPlaintextBytes, nil
 }
 
 func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(request *pb.PIR_Request, database [][]byte) (*pb.PIR_Response, error) {
@@ -235,12 +262,10 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 	evaluation_keys := rlweStruct.evaluation_keys
 	encrypted_query := rlweStruct.encrypted_query
 
-	num_cts := len(encrypted_query)
-	log2_num_cts := int(math.Log2(float64(num_cts)))
+	log2_num_cts := int(math.Log2(float64(rlweStruct.num_cts())))
 
 	N := params.N()
 	evaluator := heint.NewEvaluator(params, evaluation_keys)
-	encoder := heint.NewEncoder(params)
 
 	var indicator_bits []*rlwe.Ciphertext
 	for i := 0; i < len(encrypted_query); i++ {
@@ -251,52 +276,24 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 		indicator_bits = append(indicator_bits, indicator_bits_slice...)
 	}
 
-	// TODO: @Rasoul, between here and the loops, you can abstract all of this code, of setting variables,
-	//  into a function. You can attach any variables that you need later on in this function into the rlweStruct.
-	//  You can also consider which of the variables you initialized before the for loop above (e.g. num_cts or log2_num_cts)
-	//  can be useful to attach to the rlweStruct, to avoid duplicating code to compute them in other functions.
-	num_rows := 1 << rlweStruct.log2_num_rows
-
-	bytes_per_coefficient := int(math.Floor(math.Log2(float64(params.PlaintextModulus())))) / 8
-	if bytes_per_coefficient > 8 {
-		// TODO: @Rasoul: throw a descriptive error, e.g. params.PlaintextModulus() needs to be set greater than XYZ.
-		//  Or better, ensure that it never happens by setting that variable correctly.
-		panic("bytes_per_coefficient > 8")
-	}
-	bytes_per_ciphertext := bytes_per_coefficient * N
-
+	bytes_per_ciphertext := rlweStruct.bytes_per_coefficient() * N
 	max_len_database_entries := maxLengthDBRows(database)
 	number_of_response_ciphertexts := (max_len_database_entries + bytes_per_ciphertext - 1) / bytes_per_ciphertext
-
 	rlweStruct.response_ciphertexts = make(structs.Vector[rlwe.Ciphertext], number_of_response_ciphertexts)
 
-	// TODO: @Rasoul, similarly, you can abstract the logic below on encoding the DB as plaintext, away into another function.
-	//  Later on, we can then only run that function as frequently as the DB changes.
-	//  It will also make it easier to check the decoding logic in ProcessResponseToPlaintext.
 	// WARNING: Inner loop is not paralleliable
 	for k := 0; k < number_of_response_ciphertexts; k++ {
-		for i := 0; i < num_rows; i++ {
+		for i := 0; i < rlweStruct.num_rows(); i++ {
 			// encoding the row of the database into the coefficients of a plaintext
-			coeffs := make([]uint64, N)
-			for j := 0; j < N; j++ {
-				the_bytes := make([]byte, 8)
-				for b := 0; b < bytes_per_coefficient; b++ {
-					if bytes_per_ciphertext*k+j*bytes_per_coefficient+b < len(database[i]) {
-						the_bytes[b] = database[i][bytes_per_ciphertext*k+j*bytes_per_coefficient+b]
-					}
-				}
-				coeffs[j] = binary.LittleEndian.Uint64(the_bytes)
-				if coeffs[j] > uint64(params.PlaintextModulus()) {
-					panic("coeffs[j] > uint64(params.PlaintextModulus())")
-				}
+			start_index := bytes_per_ciphertext * k
+			end_index := bytes_per_ciphertext * (k + 1)
+			if end_index > len(database[i]) {
+				end_index = len(database[i])
 			}
-			row_data_plaintext := heint.NewPlaintext(params, params.MaxLevel())
-			row_data_plaintext.IsBatched = false
-			err := encoder.Encode(coeffs, row_data_plaintext)
+			row_data_plaintext, err := rlweStruct.BytesArrayToPlaintext(database[i], start_index, end_index)
 			if err != nil {
-				return nil, fmt.Errorf("could not encode a row of plaintext data %s", err)
+				return nil, err
 			}
-			///
 
 			// We accumulate the results in the first cipertext so we don't require the
 			// public key to create a new ciphertext

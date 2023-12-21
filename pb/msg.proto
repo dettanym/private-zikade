@@ -84,7 +84,8 @@ message Message {
 }
 
 message PIR_Request {
-    bytes parameters = 1;
+		int64 log2_num_rows = 1;
+    bytes parameters = 2;
     oneof SchemeDependent {
       bytes RLWE_evaluation_keys = 10;
       bytes other_keys = 21;
