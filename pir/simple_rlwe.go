@@ -20,7 +20,7 @@ type SimpleRLWE_PIR_Protocol struct {
 
 	parameters heint.Parameters
 
-	secret_key rlwe.SecretKey
+	secret_key *rlwe.SecretKey
 
 	evaluation_keys      *rlwe.MemEvaluationKeySet
 	encrypted_query      structs.Vector[rlwe.Ciphertext]
@@ -135,6 +135,8 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) GenerateRequestFromQuery(requested_ro
 	if err != nil {
 		return nil, err
 	}
+	keygen := rlwe.NewKeyGenerator(rlweStruct.parameters)
+	rlweStruct.secret_key = keygen.GenSecretKeyNew()
 
 	encoder := heint.NewEncoder(rlweStruct.parameters)
 	num_slots := rlweStruct.parameters.MaxSlots()
@@ -226,14 +228,13 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) PlaintextToBytesArray(plaintext *rlwe
 	return plaintextBytes, nil
 }
 
-// TODO: @Rasoul: test that this returns a row of the DB input into ProcessRequestAndReturnResponse
 func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessResponseToPlaintext(res *pb.PIR_Response) ([]byte, error) {
 	err := rlweStruct.UnmarshalResponseFromPB(res)
 	if err != nil {
 		return nil, fmt.Errorf("could not unmarshal response from PB %s", err)
 	}
 
-	decryptor := heint.NewDecryptor(rlweStruct.parameters, &rlweStruct.secret_key)
+	decryptor := heint.NewDecryptor(rlweStruct.parameters, rlweStruct.secret_key)
 	var allPlaintextBytes []byte
 	for i := range rlweStruct.response_ciphertexts {
 		plaintext := decryptor.DecryptNew(&rlweStruct.response_ciphertexts[i])
@@ -258,20 +259,28 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 		return nil, err
 	}
 
-	params := rlweStruct.parameters
 	evaluation_keys := rlweStruct.evaluation_keys
 	encrypted_query := rlweStruct.encrypted_query
 
 	log2_num_cts := int(math.Log2(float64(rlweStruct.num_cts())))
 
-	N := params.N()
-	evaluator := heint.NewEvaluator(params, evaluation_keys)
+	N := rlweStruct.parameters.N()
+	evaluator := heint.NewEvaluator(rlweStruct.parameters, evaluation_keys)
 
 	var indicator_bits []*rlwe.Ciphertext
-	for i := 0; i < len(encrypted_query); i++ {
-		indicator_bits_slice, err := evaluator.Expand(&encrypted_query[i], rlweStruct.log2_num_rows-log2_num_cts, 0)
-		if err != nil {
-			return nil, err
+	for i := range encrypted_query {
+		var indicator_bits_slice []*rlwe.Ciphertext
+		if rlweStruct.log2_num_rows-log2_num_cts > 0 {
+
+			indicator_bits_slice, err = evaluator.Expand(&encrypted_query[i], rlweStruct.log2_num_rows-log2_num_cts, 0)
+			if err != nil {
+				return nil, err
+			}
+
+		} else if rlweStruct.log2_num_rows == log2_num_cts {
+			indicator_bits_slice = []*rlwe.Ciphertext{&encrypted_query[i]}
+		} else {
+			return nil, fmt.Errorf("num_rows should be bigger than num_cts")
 		}
 		indicator_bits = append(indicator_bits, indicator_bits_slice...)
 	}

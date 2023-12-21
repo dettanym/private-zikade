@@ -49,7 +49,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) sampleGenerateRLWECiphertextVector() 
 
 func (rlweStruct *SimpleRLWE_PIR_Protocol) encryptRLWEPlaintexts(plaintexts []*rlwe.Plaintext) ([]rlwe.Ciphertext, error) {
 	ciphertexts := make([]rlwe.Ciphertext, len(plaintexts))
-	sk_encryptor := heint.NewEncryptor(rlweStruct.parameters, &rlweStruct.secret_key)
+	sk_encryptor := heint.NewEncryptor(rlweStruct.parameters, rlweStruct.secret_key)
 	for i := range plaintexts {
 		tmp, err := sk_encryptor.EncryptNew(plaintexts[i])
 		if err != nil {
@@ -62,9 +62,8 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) encryptRLWEPlaintexts(plaintexts []*r
 
 func (rlweStruct *SimpleRLWE_PIR_Protocol) generateEvaluationKeys(log2_bits_per_ct int) (*rlwe.MemEvaluationKeySet, error) {
 	kgen := rlwe.NewKeyGenerator(rlweStruct.parameters)
-	sk := kgen.GenSecretKeyNew()
 
-	gal_keys := kgen.GenGaloisKeysNew(rlwe.GaloisElementsForExpand(rlweStruct.parameters, log2_bits_per_ct), sk)
+	gal_keys := kgen.GenGaloisKeysNew(rlwe.GaloisElementsForExpand(rlweStruct.parameters, log2_bits_per_ct), rlweStruct.secret_key)
 	evk := rlwe.NewMemEvaluationKeySet(nil, gal_keys...)
 
 	return evk, nil
