@@ -18,7 +18,7 @@ func TestSimpleRLWEPIRQuery_UnmarshallRequestFromPB(t *testing.T) {
 
 	query := SimpleRLWE_PIR_Protocol{}
 
-	err = query.UnmarshallRequestFromPB(pirRequest)
+	err = query.unmarshallRequestFromPB(pirRequest)
 	require.NoError(t, err)
 }
 
