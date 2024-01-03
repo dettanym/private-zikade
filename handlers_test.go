@@ -1492,7 +1492,9 @@ func TestDHT_handlePrivateFindPeer(t *testing.T) {
 	serverKey := kadt.PeerID(queryingPeer).Key()
 	cpl := uint64(targetKey.CommonPrefixLength(serverKey))
 
-	chosenPirProtocol := pir.NewSimpleRLWE_PIR_Protocol(8)
+	// TODO: make log2_num_rows to be 8 once the DB is fully created
+	//  or even better, set it internally based on the size of the normalized RT struct
+	chosenPirProtocol := pir.NewSimpleRLWE_PIR_Protocol(2)
 	pirRequest, err := chosenPirProtocol.GenerateRequestFromQuery(int(cpl))
 	if err != nil {
 		return
@@ -1535,7 +1537,9 @@ func TestDHT_handlePrivateGetProviders(t *testing.T) {
 	serverKey := kadt.PeerID(queryingPeer).Key()
 	cpl := uint64(targetKey.CommonPrefixLength(serverKey))
 
-	chosenPirProtocolPeerRouting := pir.NewSimpleRLWE_PIR_Protocol(8)
+	// TODO: make log2_num_rows to be 8 once the DB is fully created
+	//  or even better, set it internally based on the size of the normalized RT struct
+	chosenPirProtocolPeerRouting := pir.NewSimpleRLWE_PIR_Protocol(2)
 	closerPeersRequest, err := chosenPirProtocolPeerRouting.GenerateRequestFromQuery(int(cpl))
 	if err != nil {
 		return
