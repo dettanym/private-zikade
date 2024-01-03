@@ -1530,6 +1530,31 @@ func TestDHT_handlePrivateGetProviders(t *testing.T) {
 	assert.Equal(t, len(peers), d.host.Peerstore().PeersWithAddrs().Len())
 	printCPLAndBucketSizes(d, peers)
 
+	key := []byte("random-key")
+
+	be, err := typedBackend[*ProvidersBackend](d, namespaceProviders)
+	ctx := context.Background()
+
+	log2_num_records := 10
+
+	// Inserts providers into own provider store
+	//  copied from handleGetProviders_happy_path
+	providers := []peer.AddrInfo{}
+	for i := 0; i < log2_num_records; i++ {
+		providers = append(providers, newAddrInfo(t))
+	}
+
+	for _, p := range providers {
+		// add to addresses peerstore
+		d.host.Peerstore().AddAddrs(p.ID, p.Addrs, time.Hour)
+
+		// write to datastore
+		dsKey := newDatastoreKey(namespaceProviders, string(key), string(p.ID))
+		rec := expiryRecord{expiry: time.Now()}
+		err := be.datastore.Put(ctx, dsKey, rec.MarshalBinary())
+		require.NoError(t, err)
+	}
+
 	// First generate PIR request
 	keyBytes := []byte("random-key")
 
