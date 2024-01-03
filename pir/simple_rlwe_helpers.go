@@ -3,11 +3,8 @@ package pir
 import (
 	"fmt"
 
-	"github.com/plprobelab/zikade/pb"
 	"github.com/tuneinsight/lattigo/v5/core/rlwe"
 	"github.com/tuneinsight/lattigo/v5/he/heint"
-	"github.com/tuneinsight/lattigo/v5/utils/sampling"
-	"github.com/tuneinsight/lattigo/v5/utils/structs"
 )
 
 // From https://github.com/tuneinsight/lattigo/blob/master/schemes/bgv/examples_parameters.go
@@ -28,24 +25,24 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) generateParameters() error { //
 	return nil
 }
 
-func (rlweStruct *SimpleRLWE_PIR_Protocol) sampleGenerateRLWECiphertextVector() ([]rlwe.Ciphertext, error) {
-	prng, err := sampling.NewPRNG()
-	if err != nil {
-		return nil, err
-	}
+// func (rlweStruct *SimpleRLWE_PIR_Protocol) sampleGenerateRLWECiphertextVector() ([]rlwe.Ciphertext, error) {
+// 	prng, err := sampling.NewPRNG()
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	err = rlweStruct.generateParameters()
-	if err != nil {
-		return nil, err
-	}
+// 	err = rlweStruct.generateParameters()
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	// TODO: @Rasoul CHECK THIS
-	//  The degree and level below are set on the basis of the heint benchmarks from here:
-	//  https://github.com/tuneinsight/lattigo/blob/master/he/heint/heint_benchmark_test.go#L244
-	//   Set them meaningfully.
-	ct := rlwe.NewCiphertextRandom(prng, rlweStruct.parameters, 1, rlweStruct.parameters.MaxLevel())
-	return []rlwe.Ciphertext{*ct}, nil
-}
+// 	// TODO: @Rasoul CHECK THIS
+// 	//  The degree and level below are set on the basis of the heint benchmarks from here:
+// 	//  https://github.com/tuneinsight/lattigo/blob/master/he/heint/heint_benchmark_test.go#L244
+// 	//   Set them meaningfully.
+// 	ct := rlwe.NewCiphertextRandom(prng, rlweStruct.parameters, 1, rlweStruct.parameters.MaxLevel())
+// 	return []rlwe.Ciphertext{*ct}, nil
+// }
 
 func (rlweStruct *SimpleRLWE_PIR_Protocol) encryptRLWEPlaintexts(plaintexts []*rlwe.Plaintext) ([]rlwe.Ciphertext, error) {
 	ciphertexts := make([]rlwe.Ciphertext, len(plaintexts))
@@ -60,7 +57,6 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) encryptRLWEPlaintexts(plaintexts []*r
 	return ciphertexts, nil
 }
 
-// TODO: @Rasoul --- test this: it throws a panic: key is not correct: sk ring degree does not match params ring degree
 func (rlweStruct *SimpleRLWE_PIR_Protocol) generateEvaluationKeys(log2_bits_per_ct int) (*rlwe.MemEvaluationKeySet, error) {
 	kgen := rlwe.NewKeyGenerator(rlweStruct.parameters)
 
@@ -70,50 +66,55 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) generateEvaluationKeys(log2_bits_per_
 	return evk, nil
 }
 
-func (rlweStruct *SimpleRLWE_PIR_Protocol) SampleGeneratePIRRequest() (*pb.PIR_Request, error) {
+// // TODO: Please delete this function and sampleGenerateRLWECiphertextVector use GenerateRequestFromQuery instead.
+// // These functions keeps causing many bugs and their not necessary
+// func (rlweStruct *SimpleRLWE_PIR_Protocol) SampleGeneratePIRRequest() (*pb.PIR_Request, error) {
 
-	// rlweStruct.log2_num_rows = log2_num_rows
+// 	// rlweStruct.log2_num_rows = log2_num_rows
 
-	err := rlweStruct.generateParameters()
-	if err != nil {
-		return nil, err
-	}
+// 	err := rlweStruct.generateParameters()
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	parametersBinary, err := rlweStruct.parameters.MarshalBinary()
-	if err != nil {
-		fmt.Printf("could not create test HE Parameters %s", err)
-		return nil, err
-	}
+// 	parametersBinary, err := rlweStruct.parameters.MarshalBinary()
+// 	if err != nil {
+// 		fmt.Printf("could not create test HE Parameters %s", err)
+// 		return nil, err
+// 	}
 
-	ciphertexts, err := rlweStruct.sampleGenerateRLWECiphertextVector()
-	if err != nil {
-		return nil, err
-	}
+// 	ciphertexts, err := rlweStruct.sampleGenerateRLWECiphertextVector()
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	ciphertextBinary, err := structs.Vector[rlwe.Ciphertext](ciphertexts).MarshalBinary()
-	if err != nil {
-		return nil, err
-	}
+// 	ciphertextBinary, err := structs.Vector[rlwe.Ciphertext](ciphertexts).MarshalBinary()
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	evKey, err := rlweStruct.generateEvaluationKeys(rlweStruct.log2_num_rows)
-	if err != nil {
-		return nil, err
-	}
-	evKeyBinary, err := evKey.MarshalBinary()
-	if err != nil {
-		return nil, err
-	}
+// 	kgen := rlwe.NewKeyGenerator(rlweStruct.parameters)
+// 	rlweStruct.secret_key = kgen.GenSecretKeyNew()
 
-	pirRequest := &pb.PIR_Request{
-		Log2NumRows: int64(rlweStruct.log2_num_rows),
-		Parameters:  parametersBinary,
-		SchemeDependent: &pb.PIR_Request_RLWEEvaluationKeys{
-			RLWEEvaluationKeys: evKeyBinary},
-		EncryptedQuery: ciphertextBinary,
-	}
+// 	evKey, err := rlweStruct.generateEvaluationKeys(rlweStruct.log2_num_rows)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	evKeyBinary, err := evKey.MarshalBinary()
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	return pirRequest, nil
-}
+// 	pirRequest := &pb.PIR_Request{
+// 		Log2NumRows: int64(rlweStruct.log2_num_rows),
+// 		Parameters:  parametersBinary,
+// 		SchemeDependent: &pb.PIR_Request_RLWEEvaluationKeys{
+// 			RLWEEvaluationKeys: evKeyBinary},
+// 		EncryptedQuery: ciphertextBinary,
+// 	}
+
+// 	return pirRequest, nil
+// }
 
 // For the routing case, the normalization algorithm will ensure that all rows have the same number of peer records.
 // Potentially, a record can have many multiaddresses, so that could be the only reason why the size of a row can vary (routing case).
