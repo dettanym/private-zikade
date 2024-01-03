@@ -27,6 +27,9 @@ type SimpleRLWE_PIR_Protocol struct {
 	response_ciphertexts structs.Vector[rlwe.Ciphertext]
 }
 
+// TODO: These don't need to be functions. They can just be set once within an internal struct called dependentParams or something
+//
+//	and then retrieved later
 func (rlweStruct *SimpleRLWE_PIR_Protocol) num_rows() int {
 	return 1 << rlweStruct.log2_num_rows
 }
