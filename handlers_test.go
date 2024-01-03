@@ -1570,15 +1570,12 @@ func TestDHT_handlePrivateGetProviders(t *testing.T) {
 		return
 	}
 
-	var fileCID cid.Cid
-	cidHashed := string(fileCID.Hash())
-	// TODO: Interpret the first ten bits of this string for provider advertisements.
-	dsKey := newDatastoreKey("providers", cidHashed).String()
+	log2_num_Buckets := 8
+	var fileCID = NewRandomContent(t)
+	bucketIndex := providerAdsGenerateBucketIndexFromCID(t, fileCID, log2_num_records, log2_num_Buckets)
 
-	// targetKeyForProviderAds := []byte(targetKey.HexString())
-	// newDatastoreKey("providers", targetKeyForProviderAds).Key()
-	chosenPirProtocolProviderRouting := pir.NewSimpleRLWE_PIR_Protocol(12)
-	providerPeersRequest, err := chosenPirProtocolProviderRouting.GenerateRequestFromQueryString(dsKey)
+	chosenPirProtocolProviderRouting := pir.NewSimpleRLWE_PIR_Protocol(log2_num_Buckets)
+	providerPeersRequest, err := chosenPirProtocolProviderRouting.GenerateRequestFromQuery(bucketIndex)
 	if err != nil {
 		return
 	}
@@ -1595,4 +1592,21 @@ func TestDHT_handlePrivateGetProviders(t *testing.T) {
 
 	assert.Equal(t, pb.Message_PRIVATE_GET_PROVIDERS, resp.Type)
 	assert.Equal(t, resp.PIR_Message_ID, msg.PIR_Message_ID)
+}
+
+// TODO: Refactor and move it elsewhere. Use it within mapCIDsToProviders
+func providerAdsGenerateBucketIndexFromCID(t *testing.T, fileCID cid.Cid, log2_num_records int, log2_num_Buckets int) int {
+	// M=2^m number of records
+	// we set bucket size B = 2^b = 256 records in total i.e. overhead of 2^b - 1
+	// number of buckets = 2^n = 2^m / (2^b) = 2^(m-b)
+	// or 2^b = 2^(m-n)
+	// can access the length of the hash by fileCID.Prefix().MhLength
+	cidHashed := fileCID.Hash()
+	bucketIndexLength := log2_num_records - log2_num_Buckets
+	bucketIndexStr := cidHashed[2 : bucketIndexLength+2].HexString() // skipping first two bytes for hash function code, length
+	// TODO: Check base here.
+	bucketIndex, err := strconv.ParseInt(bucketIndexStr, 16, 64)
+	require.NoError(t, err)
+	fmt.Printf("%T, %v\n", bucketIndex, bucketIndex)
+	return int(bucketIndex)
 }

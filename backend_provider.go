@@ -371,6 +371,8 @@ func (p *ProvidersBackend) MapCIDsToProviderPeersForPIR(ctx context.Context) (ma
 
 	}
 
+	// TODO: Add code to bucket records in mapCIDToProviderPeers based on the first few bytes of their multihash
+	//  call providerAdsGenerateBucketIndexFromCID (in handlers_test.go, move it from there)
 	return mapCIDtoProviderPeers, err
 }
 
