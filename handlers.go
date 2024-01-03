@@ -343,15 +343,11 @@ func (d *DHT) handlePrivateGetProviderRecords(ctx context.Context, remote peer.I
 		return nil, fmt.Errorf("PIR Request for Provider Peers not sent in the message")
 	}
 
-	backend, ok := d.backends[namespaceProviders]
-	if !ok {
-		return nil, fmt.Errorf("unsupported record type: %s", namespaceProviders)
+	backend, err := typedBackend[*ProvidersBackend](d, namespaceProviders)
+	if err != nil {
+		panic("could not typecast backend, to run the function to prepare the DB for PIR")
 	}
-
-	// TODO: Typecasted as I only implemented the method below for the providersBackend
-	//  Can extend this to other backend types e.g. IPNS in the future.
-	newBackend := backend.(*ProvidersBackend)
-	mapCIDtoProviderPeers, err := newBackend.MapCIDsToProviderPeersForPIR(ctx)
+	mapCIDtoProviderPeers, err := backend.MapCIDsToProviderPeersForPIR(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("could not construct a map of CIDs to provider peers for PIR")
 	}

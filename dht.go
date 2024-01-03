@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ipfs/go-datastore/trace"
 	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -180,7 +181,7 @@ func (d *DHT) initAminoBackends() (map[string]Backend, error) {
 	}
 
 	// wrap datastore in open telemetry tracing
-	dstore = NewDatastoreWithTracer(dstore, d.tele.Tracer)
+	dstore = trace.New(dstore, d.tele.Tracer)
 
 	pbeCfg, err := DefaultProviderBackendConfig()
 	if err != nil {
