@@ -25,8 +25,8 @@ import (
 	"github.com/plprobelab/zikade/kadt"
 )
 
-// newRandomContent reads 1024 bytes from crypto/rand and builds a content struct.
-func newRandomContent(t testing.TB) cid.Cid {
+// NewRandomContent reads 1024 bytes from crypto/rand and builds a content struct.
+func NewRandomContent(t testing.TB) cid.Cid {
 	raw := make([]byte, 1024)
 	_, err := rand.Read(raw)
 	require.NoError(t, err)
@@ -220,7 +220,7 @@ func TestDHT_Provide_no_providers_backend_registered(t *testing.T) {
 	d := newTestDHT(t)
 
 	delete(d.backends, namespaceProviders)
-	err := d.Provide(ctx, newRandomContent(t), true)
+	err := d.Provide(ctx, NewRandomContent(t), true)
 	assert.ErrorIs(t, err, routing.ErrNotSupported)
 }
 
@@ -251,7 +251,7 @@ func TestDHT_Provide_erroneous_datastore(t *testing.T) {
 
 	be.datastore = dstore
 
-	err = d.Provide(ctx, newRandomContent(t), true)
+	err = d.Provide(ctx, NewRandomContent(t), true)
 	assert.ErrorIs(t, err, testErr)
 }
 
@@ -259,7 +259,7 @@ func TestDHT_Provide_does_nothing_if_broadcast_is_false(t *testing.T) {
 	ctx := kadtest.CtxShort(t)
 	d := newTestDHT(t) // unconnected DHT
 
-	c := newRandomContent(t)
+	c := NewRandomContent(t)
 	err := d.Provide(ctx, c, false)
 	assert.NoError(t, err)
 
@@ -279,14 +279,14 @@ func TestDHT_Provide_fails_if_routing_table_is_empty(t *testing.T) {
 	ctx := kadtest.CtxShort(t)
 	d := newTestDHT(t)
 
-	err := d.Provide(ctx, newRandomContent(t), true)
+	err := d.Provide(ctx, NewRandomContent(t), true)
 	assert.Error(t, err)
 }
 
 func TestDHT_FindProvidersAsync_empty_routing_table(t *testing.T) {
 	ctx := kadtest.CtxShort(t)
 	d := newTestDHT(t)
-	c := newRandomContent(t)
+	c := NewRandomContent(t)
 
 	out := d.FindProvidersAsync(ctx, c, 1)
 	kadtest.AssertClosed(t, ctx, out)
@@ -299,7 +299,7 @@ func TestDHT_FindProvidersAsync_dht_does_not_support_providers(t *testing.T) {
 
 	delete(d.backends, namespaceProviders)
 
-	out := d.FindProvidersAsync(ctx, newRandomContent(t), 1)
+	out := d.FindProvidersAsync(ctx, NewRandomContent(t), 1)
 	kadtest.AssertClosed(t, ctx, out)
 }
 
@@ -308,7 +308,7 @@ func TestDHT_FindProvidersAsync_providers_stored_locally(t *testing.T) {
 	d := newTestDHT(t)
 	fillRoutingTable(t, d, 250)
 
-	c := newRandomContent(t)
+	c := NewRandomContent(t)
 	provider := peer.AddrInfo{ID: newPeerID(t)}
 	_, err := d.backends[namespaceProviders].Store(ctx, string(c.Hash()), provider)
 	require.NoError(t, err)
@@ -326,7 +326,7 @@ func TestDHT_FindProvidersAsync_returns_only_count_from_local_store(t *testing.T
 	d := newTestDHT(t)
 	fillRoutingTable(t, d, 250)
 
-	c := newRandomContent(t)
+	c := NewRandomContent(t)
 
 	storedCount := 5
 	requestedCount := 3
@@ -361,7 +361,7 @@ LOOP:
 func TestDHT_FindProvidersAsync_queries_other_peers(t *testing.T) {
 	ctx := kadtest.CtxShort(t)
 
-	c := newRandomContent(t)
+	c := NewRandomContent(t)
 
 	top := NewTopology(t)
 	d1 := top.AddServer(nil)
@@ -395,7 +395,7 @@ func TestDHT_FindProvidersAsync_respects_cancelled_context_for_local_query(t *te
 	ctx := kadtest.CtxShort(t)
 	d := newTestDHT(t)
 
-	c := newRandomContent(t)
+	c := NewRandomContent(t)
 
 	providersCount := 50
 	for i := 0; i < providersCount; i++ {
@@ -434,7 +434,7 @@ func TestDHT_FindProvidersAsync_does_not_return_same_record_twice(t *testing.T) 
 	// The query should run until exhaustion.
 	ctx := kadtest.CtxShort(t)
 
-	c := newRandomContent(t)
+	c := NewRandomContent(t)
 
 	top := NewTopology(t)
 	d1 := top.AddServer(nil)
@@ -492,7 +492,7 @@ func TestDHT_FindProvidersAsync_datastore_error(t *testing.T) {
 
 	be.datastore = dstore
 
-	out := d.FindProvidersAsync(ctx, newRandomContent(t), 0)
+	out := d.FindProvidersAsync(ctx, NewRandomContent(t), 0)
 	kadtest.AssertClosed(t, ctx, out)
 }
 
