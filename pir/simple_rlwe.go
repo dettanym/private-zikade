@@ -25,6 +25,8 @@ type SimpleRLWE_PIR_Protocol struct {
 	evaluation_keys      *rlwe.MemEvaluationKeySet
 	encrypted_query      structs.Vector[rlwe.Ciphertext]
 	response_ciphertexts structs.Vector[rlwe.Ciphertext]
+
+	bytesPerCiphertextCoefficient int
 }
 
 // TODO: These don't need to be functions. They can just be set once within an internal struct called dependentParams or something
@@ -38,17 +40,27 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) num_cts() int {
 	return len(rlweStruct.encrypted_query)
 }
 
-func (rlweStruct *SimpleRLWE_PIR_Protocol) bytes_per_coefficient() int {
-	return int(math.Floor(math.Log2(float64(rlweStruct.parameters.PlaintextModulus())))) / 8
-}
-
 func (rlweStruct *SimpleRLWE_PIR_Protocol) bytes_per_ciphertext() int {
-	return rlweStruct.bytes_per_coefficient() * rlweStruct.parameters.N()
+	return rlweStruct.bytesPerCiphertextCoefficient * rlweStruct.parameters.N()
 }
 
 // Use by client to create a new PIR request
 func NewSimpleRLWE_PIR_Protocol(log2_num_rows int) *SimpleRLWE_PIR_Protocol {
-	return &SimpleRLWE_PIR_Protocol{log2_num_rows: log2_num_rows}
+	rlweStruct := &SimpleRLWE_PIR_Protocol{
+		log2_num_rows: log2_num_rows,
+	}
+	err := rlweStruct.generateParameters()
+	if err != nil {
+		return nil
+	}
+	rlweStruct.bytesPerCiphertextCoefficient = int(math.Floor(math.Log2(float64(rlweStruct.parameters.PlaintextModulus())))) / 8
+	// TODO: Can we just get rid of this error by ensuring that this condition is always true when generating the parameters?
+	if rlweStruct.bytesPerCiphertextCoefficient > 8 {
+		fmt.Println("bytesPerCiphertextCoefficient > 8, Code can not handle coefficients larger than 64 bits")
+		return nil
+	}
+
+	return rlweStruct
 }
 
 func (rlweStruct *SimpleRLWE_PIR_Protocol) marshalRequestToPB() (*pb.PIR_Request, error) {
@@ -191,16 +203,13 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) BytesArrayToPlaintext(byte_array []by
 	coeffs := make([]uint64, N)
 	for j := 0; j < N; j++ {
 		the_bytes := make([]byte, 8)
-		if rlweStruct.bytes_per_coefficient() > 8 {
-			panic("rlweStruct.bytes_per_coefficient() > 8, Code can not handle coefficients larger than 64 bits")
-		}
-		for b := 0; b < rlweStruct.bytes_per_coefficient(); b++ {
-			if j*rlweStruct.bytes_per_coefficient()+b < end_index {
-				the_bytes[b] = byte_array[start_index+j*rlweStruct.bytes_per_coefficient()+b]
+		for b := 0; b < rlweStruct.bytesPerCiphertextCoefficient; b++ {
+			if j*rlweStruct.bytesPerCiphertextCoefficient+b < end_index {
+				the_bytes[b] = byte_array[start_index+j*rlweStruct.bytesPerCiphertextCoefficient+b]
 			}
 		}
 		coeffs[j] = binary.LittleEndian.Uint64(the_bytes)
-		if coeffs[j] > uint64(rlweStruct.parameters.PlaintextModulus()) {
+		if coeffs[j] > rlweStruct.parameters.PlaintextModulus() {
 			panic("coeffs[j] > uint64(params.PlaintextModulus()), Coefficients are larger than the plaintext modulus")
 		}
 	}
@@ -225,7 +234,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) PlaintextToBytesArray(plaintext *rlwe
 	for j := range temp_response {
 		temp_bytes := make([]byte, 8)
 		binary.LittleEndian.PutUint64(temp_bytes, temp_response[j])
-		plaintextBytes = append(plaintextBytes, temp_bytes[:rlweStruct.bytes_per_coefficient()]...)
+		plaintextBytes = append(plaintextBytes, temp_bytes[:rlweStruct.bytesPerCiphertextCoefficient]...)
 	}
 	return plaintextBytes, nil
 }
