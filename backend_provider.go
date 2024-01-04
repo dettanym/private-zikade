@@ -5,9 +5,11 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"github.com/ipfs/go-cid"
 	"github.com/plprobelab/zikade/pb"
 	"google.golang.org/protobuf/proto"
 	"io"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -253,7 +255,7 @@ func (p *ProvidersBackend) Validate(ctx context.Context, key string, values ...a
 // We could lookup the datastore via PIR,
 // but then we cannot use that PIR output as an index to lookup the addressbook privately.
 // So we need to flatten out or join the two data structures for PIR to work.
-func (p *ProvidersBackend) MapCIDsToProviderPeersForPIR(ctx context.Context) (map[string][]byte, error) {
+func (p *ProvidersBackend) MapCIDsToProviderPeersForPIR(ctx context.Context, bucketIndexLength int) ([]map[string][]byte, error) {
 	// get all records from the datastore
 	q, err := p.datastore.Query(ctx, dsq.Query{Prefix: "/"}) // also works with the empty string
 	if err != nil {
@@ -299,9 +301,38 @@ func (p *ProvidersBackend) MapCIDsToProviderPeersForPIR(ctx context.Context) (ma
 
 	}
 
-	// TODO: Add code to bucket records in mapCIDToProviderPeers based on the first few bytes of their multihash
-	//  call providerAdsGenerateBucketIndexFromCID (in handlers_test.go, move it from there)
-	return mapCIDtoProviderPeers, err
+	// bucketing logic
+	if bucketIndexLength < 8 {
+		return nil, fmt.Errorf("bucketIndexLength represents the length of the bucket index, in *bits* --- it must be greater than 8")
+	}
+
+	secondMap := make([]map[string][]byte, 1<<bucketIndexLength)
+	for givencid, value := range mapCIDtoProviderPeers {
+		// TODO: Refactor out common logic to providerAdsGenerateBucketIndexFromCID function
+		_, cidObj, err := cid.CidFromBytes([]byte(givencid))
+		if err != nil {
+			return nil, err
+		}
+		//cidObj, err := cid.Decode(givencid)
+		//if err != nil {
+		//	return nil, err
+		//}
+		cidHashed := cidObj.Hash()
+		// bucketIndexLength := log2_num_records - log2_num_Buckets
+		bucketIndexStr := cidHashed[2 : (bucketIndexLength/8)+2].HexString() // skipping first two bytes for hash function code, length
+		bucketIndex, err := strconv.ParseInt(bucketIndexStr, 16, 64)
+		if err != nil {
+			return nil, err
+		}
+
+		if secondMap[bucketIndex] == nil {
+			secondMap[bucketIndexLength] = make(map[string][]byte)
+		}
+		smallMap := secondMap[bucketIndexLength]
+		smallMap[givencid] = value
+	}
+
+	return secondMap, err
 }
 
 // Close is here to implement the [io.Closer] interface. This will get called

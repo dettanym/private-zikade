@@ -19,7 +19,7 @@ func RunPIRforCloserPeersRecords(req *pb.PIR_Request, ModifiedRT [][]byte) (*pb.
 	return response, nil
 }
 
-func RunPIRforProviderPeersRecords(req *pb.PIR_Request, mapCIDtoProviderPeers map[string][]byte) (*pb.PIR_Response, error) {
+func RunPIRforProviderPeersRecords(req *pb.PIR_Request, mapCIDtoProviderPeers []map[string][]byte) (*pb.PIR_Response, error) {
 	// pir_request := req.Key
 	// Maybe this method (runPIRforProviderPeerRecords) needs to be called from a PrivateFetch method on the Backend interface.
 	// The PrivateFetch method can compute the join privately and then just run this method internally, returning the encrypted providerpeers.

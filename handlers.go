@@ -344,10 +344,12 @@ func (d *DHT) handlePrivateGetProviderRecords(ctx context.Context, remote peer.I
 	}
 
 	backend, err := typedBackend[*ProvidersBackend](d, namespaceProviders)
+	// TODO: The client should pass this in the PB.
+	bucketIndexLength := 16
 	if err != nil {
 		panic("could not typecast backend, to run the function to prepare the DB for PIR")
 	}
-	mapCIDtoProviderPeers, err := backend.MapCIDsToProviderPeersForPIR(ctx)
+	mapCIDtoProviderPeers, err := backend.MapCIDsToProviderPeersForPIR(ctx, bucketIndexLength)
 	if err != nil {
 		return nil, fmt.Errorf("could not construct a map of CIDs to provider peers for PIR")
 	}
