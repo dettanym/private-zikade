@@ -258,6 +258,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 		return nil, err
 	}
 
+	// access encrypted query and validate its length
 	encrypted_query := rlweStruct.encrypted_query
 	numberOfQueryCiphertexts := len(encrypted_query)
 	log2_num_cts := int(math.Log2(float64(numberOfQueryCiphertexts)))
@@ -268,6 +269,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 	evaluation_keys := rlweStruct.evaluation_keys
 	evaluator := heint.NewEvaluator(rlweStruct.parameters, evaluation_keys)
 
+	// generate indicator vector using encrypted query, evaluation keys
 	var indicator_bits []*rlwe.Ciphertext
 	for i := range encrypted_query {
 		var indicator_bits_slice []*rlwe.Ciphertext
