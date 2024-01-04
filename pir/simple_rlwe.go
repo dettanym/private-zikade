@@ -27,6 +27,7 @@ type SimpleRLWE_PIR_Protocol struct {
 	response_ciphertexts structs.Vector[rlwe.Ciphertext]
 
 	bytesPerCiphertextCoefficient int
+	bytesPerCiphertext            int
 }
 
 // TODO: These don't need to be functions. They can just be set once within an internal struct called dependentParams or something
@@ -38,10 +39,6 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) num_rows() int {
 
 func (rlweStruct *SimpleRLWE_PIR_Protocol) num_cts() int {
 	return len(rlweStruct.encrypted_query)
-}
-
-func (rlweStruct *SimpleRLWE_PIR_Protocol) bytes_per_ciphertext() int {
-	return rlweStruct.bytesPerCiphertextCoefficient * rlweStruct.parameters.N()
 }
 
 // Use by client to create a new PIR request
@@ -60,6 +57,7 @@ func NewSimpleRLWE_PIR_Protocol(log2_num_rows int) *SimpleRLWE_PIR_Protocol {
 		return nil
 	}
 
+	rlweStruct.bytesPerCiphertext = rlweStruct.bytesPerCiphertextCoefficient * rlweStruct.parameters.N()
 	return rlweStruct
 }
 
@@ -297,15 +295,15 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 
 	// bytes_per_ciphertext := rlweStruct.bytes_per_coefficient() * N
 	max_len_database_entries := maxLengthDBRows(database)
-	number_of_response_ciphertexts := (max_len_database_entries + rlweStruct.bytes_per_ciphertext() - 1) / rlweStruct.bytes_per_ciphertext()
+	number_of_response_ciphertexts := (max_len_database_entries + rlweStruct.bytesPerCiphertext - 1) / rlweStruct.bytesPerCiphertext
 	rlweStruct.response_ciphertexts = make(structs.Vector[rlwe.Ciphertext], number_of_response_ciphertexts)
 
 	// WARNING: Inner loop is not paralleliable
 	for k := 0; k < number_of_response_ciphertexts; k++ {
 		for i := 0; i < rlweStruct.num_rows(); i++ {
 			// encoding the row of the database into the coefficients of a plaintext
-			start_index := rlweStruct.bytes_per_ciphertext() * k
-			end_index := rlweStruct.bytes_per_ciphertext() * (k + 1)
+			start_index := rlweStruct.bytesPerCiphertext * k
+			end_index := rlweStruct.bytesPerCiphertext * (k + 1)
 			if end_index > len(database[i]) {
 				end_index = len(database[i])
 			}
