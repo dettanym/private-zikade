@@ -285,25 +285,16 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 		indicator_bits = append(indicator_bits, indicator_bits_slice...)
 	}
 
-	// bytes_per_ciphertext := rlweStruct.bytes_per_coefficient() * N
-	max_len_database_entries := maxLengthDBRows(database)
-	number_of_response_ciphertexts := (max_len_database_entries + rlweStruct.bytesPerCiphertext - 1) / rlweStruct.bytesPerCiphertext
-	rlweStruct.response_ciphertexts = make(structs.Vector[rlwe.Ciphertext], number_of_response_ciphertexts)
+	err = rlweStruct.transformDBToPlaintextForm(database)
+	if err != nil {
+		return nil, err
+	}
 
 	num_rows := 1 << rlweStruct.log2_num_rows
 	// WARNING: Inner loop is not parallelizable
-	for k := 0; k < number_of_response_ciphertexts; k++ {
+	for k := 0; k < len(rlweStruct.response_ciphertexts); k++ {
 		for i := 0; i < num_rows; i++ {
-			// encoding the row of the database into the coefficients of a plaintext
-			start_index := rlweStruct.bytesPerCiphertext * k
-			end_index := rlweStruct.bytesPerCiphertext * (k + 1)
-			if end_index > len(database[i]) {
-				end_index = len(database[i])
-			}
-			row_data_plaintext, err := rlweStruct.BytesArrayToPlaintext(database[i], start_index, end_index)
-			if err != nil {
-				return nil, err
-			}
+			row_data_plaintext := rlweStruct.plaintextDB[k][i]
 
 			// We accumulate the results in the first cipertext so we don't require the
 			// public key to create a new ciphertext
