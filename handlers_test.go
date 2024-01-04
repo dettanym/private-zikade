@@ -1617,20 +1617,3 @@ func TestDHT_handlePrivateGetProviders(t *testing.T) {
 	//    for the given CID, in the response as in the normal handleGetProviders case.
 	//     (There may be more providers, but for other CIDs.)
 }
-
-// TODO: Refactor and move it elsewhere. Use it within mapCIDsToProviders
-func providerAdsGenerateBucketIndexFromCID(t *testing.T, fileCID cid.Cid, log2_num_records int, log2_num_Buckets int) int {
-	// M=2^m number of records
-	// we set bucket size B = 2^b = 256 records in total i.e. overhead of 2^b - 1
-	// number of buckets = 2^n = 2^m / (2^b) = 2^(m-b)
-	// or 2^b = 2^(m-n)
-	// can access the length of the hash by fileCID.Prefix().MhLength
-	cidHashed := fileCID.Hash()
-	bucketIndexLength := log2_num_records - log2_num_Buckets
-	bucketIndexStr := cidHashed[2 : bucketIndexLength+2].HexString() // skipping first two bytes for hash function code, length
-	// TODO: Check base here.
-	bucketIndex, err := strconv.ParseInt(bucketIndexStr, 16, 64)
-	require.NoError(t, err)
-	fmt.Printf("%T, %v\n", bucketIndex, bucketIndex)
-	return int(bucketIndex)
-}

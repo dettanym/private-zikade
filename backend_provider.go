@@ -591,3 +591,22 @@ func (p *ProvidersBackend) fetchLoopForEachElement(ctx context.Context, e dsq.Re
 	providerSetForCID := mapCIDtoProviderSet[cid]
 	providerSetForCID.addProvider(addrInfo, rec.expiry)
 }
+
+func providerAdsGenerateBucketIndexFromCID(fileCID cid.Cid, log2_num_records int, log2_num_Buckets int) (int, error) {
+	// M=2^m number of records
+	// we set bucket size B = 2^b = 256 records in total i.e. overhead of 2^b - 1
+	// number of buckets = 2^n = 2^m / (2^b) = 2^(m-b)
+	// or 2^b = 2^(m-n)
+	// can access the length of the hash by fileCID.Prefix().MhLength
+	cidHashed := fileCID.Hash()
+	bucketIndexLength := log2_num_records - log2_num_Buckets
+	bucketIndexStr := cidHashed[2 : bucketIndexLength+2].HexString() // skipping first two bytes for hash function code, length
+	// TODO: Check base here.
+
+	bucketIndex, err := strconv.ParseInt(bucketIndexStr, 16, 64)
+	if err != nil {
+		return -1, err
+	}
+	fmt.Printf("%T, %v\n", bucketIndex, bucketIndex)
+	return int(bucketIndex), nil
+}
