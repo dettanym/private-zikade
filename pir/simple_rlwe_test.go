@@ -13,13 +13,8 @@ func TestSimpleRLWEPIRQuery_UnmarshallRequestFromPB(t *testing.T) {
 	log2_number_of_rows := 8
 	chosen_PIR_Protocol := NewSimpleRLWE_PIR_Protocol(log2_number_of_rows)
 
-	// pirRequest, err := chosen_PIR_Protocol.SampleGeneratePIRRequest()
-	// require.NoError(t, err)
-
-	// Generate a random pirRequest as follows instead of above:
-	seed := rand.NewSource(time.Now().UnixNano())
-	query := rand.New(seed).Intn(1 << log2_number_of_rows)
-	pirRequest, err := chosen_PIR_Protocol.GenerateRequestFromQuery(query)
+	// Generate random sample PIR request as follows:
+	pirRequest, err := chosen_PIR_Protocol.SampleGeneratePIRRequest(1 << log2_number_of_rows)
 	require.NoError(t, err)
 
 	server_PIR_Protocol := SimpleRLWE_PIR_Protocol{}
@@ -32,13 +27,7 @@ func TestPIR_Protocol_Simple_RLWE_ProcessRequestAndReturnResponse(t *testing.T) 
 	log2_number_of_rows := 8
 	chosen_PIR_Protocol := NewSimpleRLWE_PIR_Protocol(log2_number_of_rows)
 
-	// pirRequest, err := chosen_PIR_Protocol.SampleGeneratePIRRequest()
-	// require.NoError(t, err)
-
-	// Generate a random pirRequest as follows instead of above:
-	seed := rand.NewSource(time.Now().UnixNano())
-	query := rand.New(seed).Intn(1 << log2_number_of_rows)
-	pirRequest, err := chosen_PIR_Protocol.GenerateRequestFromQuery(query)
+	pirRequest, err := chosen_PIR_Protocol.SampleGeneratePIRRequest(1 << log2_number_of_rows)
 	require.NoError(t, err)
 
 	db := make([][]byte, 1<<log2_number_of_rows)
