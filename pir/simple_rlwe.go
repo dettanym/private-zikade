@@ -258,15 +258,14 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 		return nil, err
 	}
 
-	evaluation_keys := rlweStruct.evaluation_keys
 	encrypted_query := rlweStruct.encrypted_query
-
 	numberOfQueryCiphertexts := len(encrypted_query)
 	log2_num_cts := int(math.Log2(float64(numberOfQueryCiphertexts)))
 	if rlweStruct.log2_num_rows < log2_num_cts {
 		return nil, fmt.Errorf("number of query ciphertexts supplied by the client should be less than or equal to the number of rows in the DB")
 	}
 
+	evaluation_keys := rlweStruct.evaluation_keys
 	evaluator := heint.NewEvaluator(rlweStruct.parameters, evaluation_keys)
 
 	var indicator_bits []*rlwe.Ciphertext
