@@ -1515,7 +1515,7 @@ func TestDHT_handlePrivateFindPeer(t *testing.T) {
 	// TODO: Process the response in resp.CloserPeers into plaintext form
 	//  check that at least d.cfg.BucketSize peers are returned
 	//   check that the returned peers "are approximately as close as"
-	//    the peers returned from handleGetProviders
+	//    the peers returned from handleGetPeers
 	//     Here this approximate distance condition will also need to be coded up
 	//      in private-go-kademlia repo while testing the o/p of normalization
 	//assert.Nil(t, resp.Record)
@@ -1536,31 +1536,6 @@ func TestDHT_handlePrivateGetProviders(t *testing.T) {
 	assert.Equal(t, len(peers), d.host.Peerstore().PeersWithAddrs().Len())
 	printCPLAndBucketSizes(d, peers)
 
-	key := []byte("random-key")
-
-	be, err := typedBackend[*ProvidersBackend](d, namespaceProviders)
-	ctx := context.Background()
-
-	log2_num_records := 10
-
-	// Inserts providers into own provider store
-	//  copied from handleGetProviders_happy_path
-	providers := []peer.AddrInfo{}
-	for i := 0; i < log2_num_records; i++ {
-		providers = append(providers, newAddrInfo(t))
-	}
-
-	for _, p := range providers {
-		// add to addresses peerstore
-		d.host.Peerstore().AddAddrs(p.ID, p.Addrs, time.Hour)
-
-		// write to datastore
-		dsKey := newDatastoreKey(namespaceProviders, string(key), string(p.ID))
-		rec := expiryRecord{expiry: time.Now()}
-		err := be.datastore.Put(ctx, dsKey, rec.MarshalBinary())
-		require.NoError(t, err)
-	}
-
 	// First generate PIR request
 	keyBytes := []byte("random-key")
 
@@ -1576,9 +1551,47 @@ func TestDHT_handlePrivateGetProviders(t *testing.T) {
 		return
 	}
 
+	be, err := typedBackend[*ProvidersBackend](d, namespaceProviders)
+	ctx := context.Background()
+
+	log2_num_records := 10
+
+	// creates CIDs and inserts their providers into own provider store
+	providers := []peer.AddrInfo{}
+	for i := 0; i < 1<<log2_num_records; i++ {
+		providers = append(providers, newAddrInfo(t))
+	}
+
+	// make half as many CIDs as providers
+	cids := make([]cid.Cid, len(providers)/2)
+	for i := 0; i < len(providers)/2; i++ {
+		fileCID := NewRandomContent(t)
+		cids[i] = fileCID
+	}
+
+	// advertise each CID by two providers
+	for i, p := range providers {
+		// add to addresses peerstore
+		d.host.Peerstore().AddAddrs(p.ID, p.Addrs, time.Hour)
+
+		var fileCID cid.Cid
+		if i < len(providers)/2 {
+			fileCID = cids[i]
+		} else {
+			fileCID = cids[i-len(providers)/2]
+		}
+
+		// write to datastore
+		dsKey := newDatastoreKey(namespaceProviders, string(fileCID.Hash()), string(p.ID))
+		rec := expiryRecord{expiry: time.Now()}
+		err := be.datastore.Put(ctx, dsKey, rec.MarshalBinary())
+		require.NoError(t, err)
+	}
+
 	log2_num_Buckets := 8
-	var fileCID = NewRandomContent(t)
-	bucketIndex := providerAdsGenerateBucketIndexFromCID(t, fileCID, log2_num_records, log2_num_Buckets)
+	var lookupFileCID = NewRandomContent(t)
+	bucketIndex, err := providerAdsGenerateBucketIndexFromCID(lookupFileCID, log2_num_records, log2_num_Buckets)
+	require.NoError(t, err)
 
 	chosenPirProtocolProviderRouting := pir.NewSimpleRLWE_PIR_Protocol(log2_num_Buckets)
 	providerPeersRequest, err := chosenPirProtocolProviderRouting.GenerateRequestFromQuery(bucketIndex)
