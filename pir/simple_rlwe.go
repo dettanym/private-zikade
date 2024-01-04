@@ -30,13 +30,6 @@ type SimpleRLWE_PIR_Protocol struct {
 	bytesPerCiphertext            int
 }
 
-// TODO: These don't need to be functions. They can just be set once within an internal struct called dependentParams or something
-//
-//	and then retrieved later
-func (rlweStruct *SimpleRLWE_PIR_Protocol) num_cts() int {
-	return len(rlweStruct.encrypted_query)
-}
-
 // Use by client to create a new PIR request
 func NewSimpleRLWE_PIR_Protocol(log2_num_rows int) *SimpleRLWE_PIR_Protocol {
 	rlweStruct := &SimpleRLWE_PIR_Protocol{
@@ -267,7 +260,8 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 	evaluation_keys := rlweStruct.evaluation_keys
 	encrypted_query := rlweStruct.encrypted_query
 
-	log2_num_cts := int(math.Log2(float64(rlweStruct.num_cts())))
+	numberOfQueryCiphertexts := len(encrypted_query)
+	log2_num_cts := int(math.Log2(float64(numberOfQueryCiphertexts)))
 
 	evaluator := heint.NewEvaluator(rlweStruct.parameters, evaluation_keys)
 
