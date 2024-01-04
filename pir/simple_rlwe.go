@@ -33,10 +33,6 @@ type SimpleRLWE_PIR_Protocol struct {
 // TODO: These don't need to be functions. They can just be set once within an internal struct called dependentParams or something
 //
 //	and then retrieved later
-func (rlweStruct *SimpleRLWE_PIR_Protocol) num_rows() int {
-	return 1 << rlweStruct.log2_num_rows
-}
-
 func (rlweStruct *SimpleRLWE_PIR_Protocol) num_cts() int {
 	return len(rlweStruct.encrypted_query)
 }
@@ -298,9 +294,10 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 	number_of_response_ciphertexts := (max_len_database_entries + rlweStruct.bytesPerCiphertext - 1) / rlweStruct.bytesPerCiphertext
 	rlweStruct.response_ciphertexts = make(structs.Vector[rlwe.Ciphertext], number_of_response_ciphertexts)
 
-	// WARNING: Inner loop is not paralleliable
+	num_rows := 1 << rlweStruct.log2_num_rows
+	// WARNING: Inner loop is not parallelizable
 	for k := 0; k < number_of_response_ciphertexts; k++ {
-		for i := 0; i < rlweStruct.num_rows(); i++ {
+		for i := 0; i < num_rows; i++ {
 			// encoding the row of the database into the coefficients of a plaintext
 			start_index := rlweStruct.bytesPerCiphertext * k
 			end_index := rlweStruct.bytesPerCiphertext * (k + 1)
