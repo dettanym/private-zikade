@@ -49,6 +49,12 @@ message Message {
 		ConnectionType connection = 3;
 	}
 
+	message CIDToProviderMap {
+		bytes cid = 1;
+		repeated Peer provider_peers = 2;
+	}
+	repeated CIDToProviderMap buckets = 20;
+
 	// defines what type of message it is.
 	MessageType type = 1;
 

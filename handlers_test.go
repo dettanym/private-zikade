@@ -1624,6 +1624,16 @@ func TestDHT_handlePrivateGetProviders(t *testing.T) {
 
 	assert.Equal(t, pb.Message_PRIVATE_GET_PROVIDERS, resp.Type)
 	assert.Equal(t, resp.PIR_Message_ID, msg.PIR_Message_ID)
+
+	_, err = chosenPirProtocolProviderRouting.ProcessResponseToPlaintext(resp.ProviderPeersResponse)
+	require.NoError(t, err)
+
+	// protoMsg := &pb.Message{
+	// 	Buckets: nil,
+	// }
+	// err = proto.Unmarshal(responseBucket, protoMsg)
+	// require.NoError(t, err)
+
 	// TODO: Process the encrypted peers in resp.ProviderPeersResponse struct
 	//  into plaintext form, and then check that each of them is one of the providers
 	//   from the variable above. Then check that there exists the same number of providers

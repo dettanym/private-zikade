@@ -256,7 +256,7 @@ func (p *ProvidersBackend) Validate(ctx context.Context, key string, values ...a
 // We could lookup the datastore via PIR,
 // but then we cannot use that PIR output as an index to lookup the addressbook privately.
 // So we need to flatten out or join the two data structures for PIR to work.
-func (p *ProvidersBackend) MapCIDsToProviderPeersForPIR(ctx context.Context, bucketIndexLength int) ([]map[string][]byte, error) {
+func (p *ProvidersBackend) MapCIDBucketsToProviderPeerBytesForPIR(ctx context.Context, bucketIndexLength int) ([][]byte, error) {
 	// get all records from the datastore
 	q, err := p.datastore.Query(ctx, dsq.Query{Prefix: "/"}) // also works with the empty string
 	if err != nil {
@@ -277,7 +277,17 @@ func (p *ProvidersBackend) MapCIDsToProviderPeersForPIR(ctx context.Context, buc
 		p.fetchLoopForEachElement(ctx, e, now, mapCIDtoProviderSet)
 	}
 
-	mapCIDtoProviderPeers := make(map[string][]byte, len(mapCIDtoProviderSet))
+	// mapCIDtoProviderPeers := make(map[string]*pb.Message_CIDToProviderMap, len(mapCIDtoProviderSet))
+
+	// bucketing logic
+	if bucketIndexLength < 8 {
+		return nil, fmt.Errorf("bucketIndexLength represents the length of the bucket index, in *bits* --- it must be greater than 8")
+	}
+	if bucketIndexLength%8 != 0 {
+		// TODO: We should get rid of this requirement
+		return nil, fmt.Errorf("bucketIndexLength represents the length of the bucket index, in *bits* --- it must be a multiple of 8")
+	}
+	buckets := make([][]*pb.Message_CIDToProviderMap, 1<<bucketIndexLength)
 
 	// Transforms the set of providers into a PB Message that can be marshalled into a byte array.
 	// This is based on how handleGetProviders processes the output of Fetch
@@ -291,57 +301,89 @@ func (p *ProvidersBackend) MapCIDsToProviderPeersForPIR(ctx context.Context, buc
 			messagePeer := pb.FromAddrInfo(provider)
 			addrInfos = append(addrInfos, messagePeer)
 		}
-		mesg := &pb.Message{
+		mesg := &pb.Message_CIDToProviderMap{
+			Cid:           []byte(givenCID),
 			ProviderPeers: addrInfos,
 		}
-		marshalledRoutingEntries, err := proto.Marshal(mesg)
-		if err != nil {
-			return nil, fmt.Errorf("could not marshal peers in RT. Err: %s ", err)
-		}
-		mapCIDtoProviderPeers[givenCID] = marshalledRoutingEntries
+		// marshalledRoutingEntries, err := proto.Marshal(mesg)
+		// if err != nil {
+		// 	return nil, fmt.Errorf("could not marshal peers in RT. Err: %s ", err)
+		// }
+		// mapCIDtoProviderPeers[givenCID] = mesg
 
-	}
-
-	// bucketing logic
-	if bucketIndexLength < 8 {
-		return nil, fmt.Errorf("bucketIndexLength represents the length of the bucket index, in *bits* --- it must be greater than 8")
-	}
-
-	secondMap := make([]map[string][]byte, 1<<bucketIndexLength)
-	for givencid, value := range mapCIDtoProviderPeers {
-		// TODO: Refactor out common logic to providerAdsGenerateBucketIndexFromCID function
-		_, cidObj, err := cid.CidFromBytes([]byte(givencid))
+		// putting the item in a bucket
+		_, cidObj, err := cid.CidFromBytes([]byte(givenCID))
 		if err != nil {
 			return nil, err
 		}
-		//cidObj, err := cid.Decode(givencid)
-		//if err != nil {
-		//	return nil, err
-		//}
 		cidHashed := cidObj.Hash()
-		// bucketIndexLength := log2_num_records - log2_num_Buckets
 		bucketIndexStr := cidHashed[2 : (bucketIndexLength/8)+2].HexString() // skipping first two bytes for hash function code, length
 		bucketIndex, err := strconv.ParseInt(bucketIndexStr, 16, 64)
 		if err != nil {
 			return nil, err
 		}
 
-		if secondMap[bucketIndex] == nil {
-			secondMap[bucketIndexLength] = make(map[string][]byte)
+		if buckets[bucketIndex] == nil {
+			buckets[bucketIndex] = make([]*pb.Message_CIDToProviderMap, 0)
 		}
-		smallMap := secondMap[bucketIndexLength]
-		smallMap[givencid] = value
+		buckets[bucketIndex] = append(buckets[bucketIndex], mesg)
 	}
 
-	return secondMap, err
+	bucketsInBytes := make([][]byte, len(buckets))
+	for i, bucket := range buckets {
+		// marshal the bucket
+		marshalledBucket, err := proto.Marshal(&pb.Message{
+			Buckets: bucket,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("could not marshal bucket. Err: %s ", err)
+		}
+		bucketsInBytes[i] = marshalledBucket
+	}
+
+	// // bucketing logic
+	// if bucketIndexLength < 8 {
+	// 	return nil, fmt.Errorf("bucketIndexLength represents the length of the bucket index, in *bits* --- it must be greater than 8")
+	// }
+	// if bucketIndexLength%8 != 0 {
+	// 	// TODO: We should get rid of this requirement
+	// 	return nil, fmt.Errorf("bucketIndexLength represents the length of the bucket index, in *bits* --- it must be a multiple of 8")
+	// }
+
+	// secondMap := make([]map[string][]byte, 1<<bucketIndexLength)
+	// for givencid, value := range mapCIDtoProviderPeers {
+	// 	// TODO: Refactor out common logic to providerAdsGenerateBucketIndexFromCID function
+	// 	_, cidObj, err := cid.CidFromBytes([]byte(givencid))
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	//cidObj, err := cid.Decode(givencid)
+	// 	//if err != nil {
+	// 	//	return nil, err
+	// 	//}
+	// 	cidHashed := cidObj.Hash()
+	// 	// bucketIndexLength := log2_num_records - log2_num_Buckets
+	// 	bucketIndexStr := cidHashed[2 : (bucketIndexLength/8)+2].HexString() // skipping first two bytes for hash function code, length
+	// 	bucketIndex, err := strconv.ParseInt(bucketIndexStr, 16, 64)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+
+	// 	if secondMap[bucketIndex] == nil {
+	// 		secondMap[bucketIndex] = make(map[string][]byte)
+	// 	}
+	// 	secondMap[bucketIndex][givencid] = value
+	// }
+
+	return bucketsInBytes, err
 }
 
-// This should be similar to the previous function, but instead of returning a map of CIDs to a list of provider peers,
-// it should return a list of CID buckets. Each CID bucket is many (cid, provider peer) pairs.
-// This is essentially the same as the previous function, but each row is marshalled to a byte array.
-func (p *ProvidersBackend) MapCIDBucketsToProviderPeerBytesForPIR(ctx context.Context, bucketIndexLength int) ([][]byte, error) {
-	return nil, fmt.Errorf("not implemented")
-}
+// // This should be similar to the previous function, but instead of returning a map of CIDs to a list of provider peers,
+// // it should return a list of CID buckets. Each CID bucket is many (cid, provider peer) pairs.
+// // This is essentially the same as the previous function, but each row is marshalled to a byte array.
+// func (p *ProvidersBackend) MapCIDBucketsToProviderPeerBytesForPIR(ctx context.Context, bucketIndexLength int) ([][]byte, error) {
+// 	return nil, fmt.Errorf("not implemented")
+// }
 
 // Close is here to implement the [io.Closer] interface. This will get called
 // when the [DHT] "shuts down"/closes.
