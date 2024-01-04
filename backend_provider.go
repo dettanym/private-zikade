@@ -202,22 +202,13 @@ func (p *ProvidersBackend) Fetch(ctx context.Context, key string) (any, error) {
 			continue
 		}
 
-		rec := expiryRecord{}
-		if err = rec.UnmarshalBinary(e.Value); err != nil {
-			p.log.LogAttrs(ctx, slog.LevelWarn, "Fetch provider record unmarshalling failed", slog.String("key", e.Key), slog.String("err", err.Error()))
-			p.delete(ctx, ds.RawKey(e.Key))
-			continue
-		} else if now.Sub(rec.expiry) > p.cfg.ProvideValidity {
-			// record is expired
-			p.delete(ctx, ds.RawKey(e.Key))
+		isRecordExpired, rec := p.deleteExpiredRecords(ctx, now, e.Key, e.Value)
+		if isRecordExpired {
 			continue
 		}
 
-		idx := strings.LastIndex(e.Key, "/")
-		binPeerID, err := base32.RawStdEncoding.DecodeString(e.Key[idx+1:])
+		_, binPeerID, err := p.decomposeDatastoreKey(ctx, e.Key)
 		if err != nil {
-			p.log.LogAttrs(ctx, slog.LevelWarn, "base32 key decoding error", slog.String("key", e.Key), slog.String("err", err.Error()))
-			p.delete(ctx, ds.RawKey(e.Key))
 			continue
 		}
 
