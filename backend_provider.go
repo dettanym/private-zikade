@@ -277,10 +277,6 @@ func (p *ProvidersBackend) Validate(ctx context.Context, key string, values ...a
 // but then we cannot use that PIR output as an index to lookup the addressbook privately.
 // So we need to flatten out or join the two data structures for PIR to work.
 func (p *ProvidersBackend) MapCIDsToProviderPeersForPIR(ctx context.Context) (map[string][]byte, error) {
-	now := p.cfg.clk.Now()
-
-	mapCIDtoProviderSet := make(map[string]*providerSet)
-
 	// get all records from the datastore
 	q, err := p.datastore.Query(ctx, dsq.Query{Prefix: "/"}) // also works with the empty string
 	if err != nil {
@@ -294,46 +290,11 @@ func (p *ProvidersBackend) MapCIDsToProviderPeersForPIR(ctx context.Context) (ma
 		}
 	}()
 
+	now := p.cfg.clk.Now()
+	mapCIDtoProviderSet := make(map[string]*providerSet)
+
 	for e := range q.Next() {
-		if e.Error != nil {
-			p.log.LogAttrs(ctx, slog.LevelWarn, "Fetch datastore entry contains error", slog.String("key", e.Key), slog.String("err", e.Error.Error()))
-			continue
-		}
-
-		// Drop expired provider advertisements
-		isRecordExpired, rec := p.deleteExpiredRecords(ctx, now, e.Key, e.Value)
-		if isRecordExpired {
-			continue
-		}
-
-		// Get CID in string form, binary peer ID for lookup
-		cid, binPeerID, err := p.decomposeDatastoreKey(ctx, e.Key)
-		if err != nil {
-			continue
-		}
-
-		// Join step --- get multiaddresses from addrBook
-		multiaddresses := p.addrBook.Addrs(peer.ID(binPeerID))
-
-		// forming the address info object for this provider record
-		addrInfo := peer.AddrInfo{
-			ID:    peer.ID(binPeerID),
-			Addrs: p.cfg.AddressFilter(multiaddresses),
-		}
-
-		// mapCIDtoProviderSet maps each CID to a set of providers.
-		// Initialize providerset if the map maps this cid to a nil.
-		if mapCIDtoProviderSet[cid] == nil {
-			mapCIDtoProviderSet[cid] =
-				&providerSet{
-					providers: []peer.AddrInfo{},
-					set:       make(map[peer.ID]time.Time)}
-		}
-
-		// Retrieve set of providers, add provider to set.
-		providerSetForCID := mapCIDtoProviderSet[cid]
-		providerSetForCID.addProvider(addrInfo, rec.expiry)
-
+		p.fetchLoopForEachElement(ctx, e, now, mapCIDtoProviderSet)
 	}
 
 	mapCIDtoProviderPeers := make(map[string][]byte, len(mapCIDtoProviderSet))
