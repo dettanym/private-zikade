@@ -282,7 +282,7 @@ func (p *ProvidersBackend) MapCIDsToProviderPeersForPIR(ctx context.Context) (ma
 	// as we've already checked for expired provider advertisements.
 	// There can be multiple providers for a given CID, so we first get a providerSet above and then
 	// transform it into a list of *pb.Message_Peer
-	for cid, providerSetForCID := range mapCIDtoProviderSet {
+	for givenCID, providerSetForCID := range mapCIDtoProviderSet {
 		addrInfos := make([]*pb.Message_Peer, len(providerSetForCID.providers))
 		for _, provider := range providerSetForCID.providers {
 			messagePeer := pb.FromAddrInfo(provider)
@@ -295,7 +295,7 @@ func (p *ProvidersBackend) MapCIDsToProviderPeersForPIR(ctx context.Context) (ma
 		if err != nil {
 			return nil, fmt.Errorf("Could not marshal peers in RT. Err: %s ", err)
 		}
-		mapCIDtoProviderPeers[cid] = marshalledRoutingEntries
+		mapCIDtoProviderPeers[givenCID] = marshalledRoutingEntries
 
 	}
 
