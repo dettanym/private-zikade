@@ -1512,6 +1512,12 @@ func TestDHT_handlePrivateFindPeer(t *testing.T) {
 	assert.Equal(t, pb.Message_PRIVATE_FIND_NODE, resp.Type)
 	assert.Equal(t, resp.PIR_Message_ID, msg.PIR_Message_ID)
 
+	// TODO: Process the response in resp.CloserPeers into plaintext form
+	//  check that at least d.cfg.BucketSize peers are returned
+	//   check that the returned peers "are approximately as close as"
+	//    the peers returned from handleGetProviders
+	//     Here this approximate distance condition will also need to be coded up
+	//      in private-go-kademlia repo while testing the o/p of normalization
 	//assert.Nil(t, resp.Record)
 	//assert.Len(t, resp.CloserPeers, d.cfg.BucketSize)
 	//assert.Len(t, resp.ProviderPeers, 0)
@@ -1592,6 +1598,11 @@ func TestDHT_handlePrivateGetProviders(t *testing.T) {
 
 	assert.Equal(t, pb.Message_PRIVATE_GET_PROVIDERS, resp.Type)
 	assert.Equal(t, resp.PIR_Message_ID, msg.PIR_Message_ID)
+	// TODO: Process the encrypted peers in resp.ProviderPeersResponse struct
+	//  into plaintext form, and then check that each of them is one of the providers
+	//   from the variable above. Then check that there exists the same number of providers
+	//    for the given CID, in the response as in the normal handleGetProviders case.
+	//     (There may be more providers, but for other CIDs.)
 }
 
 // TODO: Refactor and move it elsewhere. Use it within mapCIDsToProviders
