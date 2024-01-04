@@ -191,43 +191,20 @@ func (p *ProvidersBackend) Fetch(ctx context.Context, key string) (any, error) {
 	}()
 
 	now := p.cfg.clk.Now()
-	out := &providerSet{
-		providers: []peer.AddrInfo{},
-		set:       make(map[peer.ID]time.Time),
-	}
+	mapCIDtoProviderSet := make(map[string]*providerSet)
 
 	for e := range q.Next() {
-		if e.Error != nil {
-			p.log.LogAttrs(ctx, slog.LevelWarn, "Fetch datastore entry contains error", slog.String("key", e.Key), slog.String("err", e.Error.Error()))
-			continue
-		}
-
-		isRecordExpired, rec := p.deleteExpiredRecords(ctx, now, e.Key, e.Value)
-		if isRecordExpired {
-			continue
-		}
-
-		_, binPeerID, err := p.decomposeDatastoreKey(ctx, e.Key)
-		if err != nil {
-			continue
-		}
-
-		maddrs := p.addrBook.Addrs(peer.ID(binPeerID))
-		addrInfo := peer.AddrInfo{
-			ID:    peer.ID(binPeerID),
-			Addrs: p.cfg.AddressFilter(maddrs),
-		}
-
-		out.addProvider(addrInfo, rec.expiry)
+		p.fetchLoopForEachElement(ctx, e, now, mapCIDtoProviderSet)
 	}
 
-	if len(out.providers) == 0 {
-		return nil, ds.ErrNotFound
-	} else {
+	// each element of the map is initialized only after at least one key is found
+	if mapCIDtoProviderSet[key] != nil {
+		out := mapCIDtoProviderSet[key]
 		p.cache.Add(qKey.String(), *out)
+		return out, nil
+	} else {
+		return nil, ds.ErrNotFound
 	}
-
-	return out, nil
 }
 
 // Validate verifies that the given values are of type [peer.AddrInfo]. Then it
