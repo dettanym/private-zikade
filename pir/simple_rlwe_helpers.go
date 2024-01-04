@@ -2,6 +2,7 @@ package pir
 
 import (
 	"fmt"
+	"github.com/tuneinsight/lattigo/v5/utils/structs"
 	"math/rand"
 	"time"
 
@@ -73,4 +74,48 @@ func maxLengthDBRows(database [][]byte) int {
 		}
 	}
 	return max_len_database_entries
+}
+
+func (rlweStruct *SimpleRLWE_PIR_Protocol) initializeResponseCTs(database [][]byte) {
+	max_len_database_entries := maxLengthDBRows(database)
+	number_of_response_ciphertexts := (max_len_database_entries + rlweStruct.bytesPerCiphertext - 1) / rlweStruct.bytesPerCiphertext
+	rlweStruct.response_ciphertexts = make(structs.Vector[rlwe.Ciphertext], number_of_response_ciphertexts)
+}
+
+// encodes the rows of the database into the coefficients of a plaintext
+func (rlweStruct *SimpleRLWE_PIR_Protocol) transformDBToPlaintextForm(database [][]byte) error {
+	rlweStruct.initializeResponseCTs(database)
+	num_rows := 1 << rlweStruct.log2_num_rows
+
+	// Generating a matrix for the transformed DB,
+	// while ensuring that the assigned slices are local in memory
+	// https://go.dev/doc/effective_go#slices
+	transformedDB := make([][]*rlwe.Plaintext, len(rlweStruct.response_ciphertexts)) // One row per unit of y.
+	// Allocate one large slice to hold (rows * columns) elements.
+	transformedRow := make([]*rlwe.Plaintext, len(rlweStruct.response_ciphertexts)*num_rows) // Has type []uint8 even though picture is [][]uint8.
+	// Loop over the rows, slicing each row from the front of the remaining pixels slice.
+	for i := range transformedDB {
+		transformedDB[i], transformedRow = transformedRow[:num_rows], transformedRow[num_rows:]
+	}
+
+	// WARNING: Inner loop is not parallelizable
+	for k := 0; k < len(rlweStruct.response_ciphertexts); k++ {
+		for i := 0; i < num_rows; i++ {
+			start_index := rlweStruct.bytesPerCiphertext * k
+			end_index := rlweStruct.bytesPerCiphertext * (k + 1)
+			if end_index > len(database[i]) {
+				end_index = len(database[i])
+			}
+
+			row_data_plaintext, err := rlweStruct.BytesArrayToPlaintext(database[i], start_index, end_index)
+			if err != nil {
+				return err
+			}
+
+			transformedDB[k][i] = row_data_plaintext
+		}
+	}
+
+	rlweStruct.plaintextDB = transformedDB
+	return nil
 }

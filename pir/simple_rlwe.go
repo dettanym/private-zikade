@@ -28,6 +28,7 @@ type SimpleRLWE_PIR_Protocol struct {
 
 	bytesPerCiphertextCoefficient int
 	bytesPerCiphertext            int
+	plaintextDB                   [][]*rlwe.Plaintext
 }
 
 // Use by client to create a new PIR request
