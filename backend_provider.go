@@ -290,12 +290,13 @@ func (p *ProvidersBackend) MapCIDsToProviderPeersForPIR(ctx context.Context) (ma
 
 	mapCIDtoProviderSet := make(map[string]*providerSet)
 
+	// get all records from the datastore
 	q, err := p.datastore.Query(ctx, dsq.Query{Prefix: "/"}) // also works with the empty string
-
 	if err != nil {
 		return nil, err
 	}
 
+	// close the fetch query upon ending the function
 	defer func() {
 		if err = q.Close(); err != nil {
 			p.log.LogAttrs(ctx, slog.LevelWarn, "failed closing fetch query", slog.String("err", err.Error()))
@@ -323,6 +324,7 @@ func (p *ProvidersBackend) MapCIDsToProviderPeersForPIR(ctx context.Context) (ma
 		// Join step --- get multiaddresses from addrBook
 		multiaddresses := p.addrBook.Addrs(peer.ID(binPeerID))
 
+		// forming the address info object for this provider record
 		addrInfo := peer.AddrInfo{
 			ID:    peer.ID(binPeerID),
 			Addrs: p.cfg.AddressFilter(multiaddresses),
@@ -347,12 +349,10 @@ func (p *ProvidersBackend) MapCIDsToProviderPeersForPIR(ctx context.Context) (ma
 
 	// Transforms the set of providers into a PB Message that can be marshalled into a byte array.
 	// This is based on how handleGetProviders processes the output of Fetch
-	// (they don't care about the set field of the providerSet (which maps peer IDs to times),
-	// presumably as we've already checked for expired provider advertisements.
-	// I think mapCIDtoProviderPeers cannot be constructed in the loop above
-	// (i.e. it needs to be constructed separately from mapCIDto ProviderPeers)
-	// since somehow there can be duplicate addrInfos for the same peerID and CID?
-	// providerSet's addProvider method rules them out.
+	// they don't care about the set field of the providerSet (which maps peer IDs to times),
+	// as we've already checked for expired provider advertisements.
+	// There can be multiple providers for a given CID, so we first get a providerSet above and then
+	// transform it into a list of *pb.Message_Peer
 	for cid, providerSetForCID := range mapCIDtoProviderSet {
 		addrInfos := make([]*pb.Message_Peer, len(providerSetForCID.providers))
 		for _, provider := range providerSetForCID.providers {
