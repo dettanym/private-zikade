@@ -308,16 +308,14 @@ func (p *ProvidersBackend) MapCIDsToProviderPeersForPIR(ctx context.Context) (ma
 			continue
 		}
 
-		dsKey := ds.RawKey(e.Key)
-		dsValue := string(e.Value)
 		// Drop expired provider advertisements
-		isRecordExpired, record := p.deleteExpiredRecords(ctx, now, dsKey, dsValue)
+		isRecordExpired, rec := p.deleteExpiredRecords(ctx, now, e.Key, e.Value)
 		if isRecordExpired {
 			continue
 		}
 
 		// Get CID in string form, binary peer ID for lookup
-		cid, binPeerID, err := p.decomposeDatastoreKey(ctx, dsKey)
+		cid, binPeerID, err := p.decomposeDatastoreKey(ctx, e.Key)
 		if err != nil {
 			continue
 		}
@@ -337,11 +335,12 @@ func (p *ProvidersBackend) MapCIDsToProviderPeersForPIR(ctx context.Context) (ma
 				&providerSet{
 					providers: []peer.AddrInfo{},
 					set:       make(map[peer.ID]time.Time)}
-		} else {
-			// Retrieve set of providers, add provider to set.
-			providerSetForCID := mapCIDtoProviderSet[cid]
-			providerSetForCID.addProvider(addrInfo, record.expiry)
 		}
+
+		// Retrieve set of providers, add provider to set.
+		providerSetForCID := mapCIDtoProviderSet[cid]
+		providerSetForCID.addProvider(addrInfo, rec.expiry)
+
 	}
 
 	mapCIDtoProviderPeers := make(map[string][]byte, len(mapCIDtoProviderSet))
@@ -543,16 +542,16 @@ func (e *expiryRecord) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
-func (p *ProvidersBackend) deleteExpiredRecords(ctx context.Context, now time.Time, dsKey ds.Key, dsValue string) (isRecordExpired bool, record expiryRecord) {
+func (p *ProvidersBackend) deleteExpiredRecords(ctx context.Context, now time.Time, eKey string, eValue []byte) (isRecordExpired bool, record expiryRecord) {
 	isRecordExpired = false
 	rec := expiryRecord{}
-	if err := rec.UnmarshalBinary([]byte(dsValue)); err != nil {
-		p.log.LogAttrs(ctx, slog.LevelWarn, "Fetch provider record unmarshalling failed", slog.String("key", dsKey.String()), slog.String("err", err.Error()))
-		p.delete(ctx, dsKey)
+	if err := rec.UnmarshalBinary(eValue); err != nil {
+		p.log.LogAttrs(ctx, slog.LevelWarn, "Fetch provider record unmarshalling failed", slog.String("key", eKey), slog.String("err", err.Error()))
+		p.delete(ctx, ds.RawKey(eKey))
 		isRecordExpired = true
 	} else if now.Sub(rec.expiry) > p.cfg.ProvideValidity {
 		// record is expired
-		p.delete(ctx, dsKey)
+		p.delete(ctx, ds.RawKey(eKey))
 		isRecordExpired = true
 	}
 	return isRecordExpired, rec
