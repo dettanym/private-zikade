@@ -603,21 +603,20 @@ func newRoutingKey(namespace string, binStr string) string {
 	return buffer.String()
 }
 
-func (p *ProvidersBackend) decomposeDatastoreKey(ctx context.Context, key ds.Key) (cid string, binPeerID []byte, err error) {
-	keyStr := key.String()
-	idx := strings.LastIndex(key.String(), "/")
-	binCID, err := base32.RawStdEncoding.DecodeString(keyStr[:idx])
-	cid = string(binCID)
+func (p *ProvidersBackend) decomposeDatastoreKey(ctx context.Context, key string) (cid string, binPeerID []byte, err error) {
+	idxPeerID := strings.LastIndex(key, "/")
+	binPeerID, err = base32.RawStdEncoding.DecodeString(key[idxPeerID+1:])
 	if err != nil {
-		p.log.LogAttrs(ctx, slog.LevelWarn, "base32 key decoding error", slog.String("key", keyStr[:idx]), slog.String("err", err.Error()))
-		p.delete(ctx, key)
+		p.log.LogAttrs(ctx, slog.LevelWarn, "base32 key decoding error", slog.String("key", key[idxPeerID+1:]), slog.String("err", err.Error()))
+		p.delete(ctx, ds.RawKey(key))
 		return "", nil, err
 	}
-	binPeerID, err = base32.RawStdEncoding.DecodeString(keyStr[idx+1:])
+	idxCID := strings.LastIndex(key[:idxPeerID], "/")
+	binCID, err := base32.RawStdEncoding.DecodeString(key[idxCID+1 : idxPeerID])
 	if err != nil {
-		p.log.LogAttrs(ctx, slog.LevelWarn, "base32 key decoding error", slog.String("key", keyStr[idx+1:]), slog.String("err", err.Error()))
-		p.delete(ctx, key)
+		p.log.LogAttrs(ctx, slog.LevelWarn, "base32 key decoding error", slog.String("key", key[idxPeerID+1:]), slog.String("err", err.Error()))
+		p.delete(ctx, ds.RawKey(key))
 		return "", nil, err
 	}
-	return cid, binPeerID, nil
+	return string(binCID), binPeerID, nil
 }
