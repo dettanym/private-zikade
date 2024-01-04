@@ -610,3 +610,46 @@ func (p *ProvidersBackend) decomposeDatastoreKey(ctx context.Context, key string
 	}
 	return string(binCID), binPeerID, nil
 }
+
+func (p *ProvidersBackend) fetchLoopForEachElement(ctx context.Context, e dsq.Result, now time.Time, mapCIDtoProviderSet map[string]*providerSet) {
+	if e.Error != nil {
+		p.log.LogAttrs(ctx, slog.LevelWarn, "Fetch datastore entry contains error", slog.String("key", e.Key), slog.String("err", e.Error.Error()))
+		return
+	}
+
+	// drop expired provider advertisements
+	isRecordExpired, rec := p.deleteExpiredRecords(ctx, now, e.Key, e.Value)
+	if isRecordExpired {
+		return
+	}
+
+	// get CID in string form, binary peer ID for lookup
+	// while the cid is known in the non-private lookup,
+	// it's unknown in the private lookup, so we need to get it too
+	cid, binPeerID, err := p.decomposeDatastoreKey(ctx, e.Key)
+	if err != nil {
+		return
+	}
+
+	// get multiaddresses from addrBook
+	maddrs := p.addrBook.Addrs(peer.ID(binPeerID))
+
+	// forming the address info object for this provider record
+	addrInfo := peer.AddrInfo{
+		ID:    peer.ID(binPeerID),
+		Addrs: p.cfg.AddressFilter(maddrs),
+	}
+
+	// mapCIDtoProviderSet maps each CID to a set of providers.
+	// Initialize providerset if the map maps this cid to a nil.
+	if mapCIDtoProviderSet[cid] == nil {
+		mapCIDtoProviderSet[cid] =
+			&providerSet{
+				providers: []peer.AddrInfo{},
+				set:       make(map[peer.ID]time.Time)}
+	}
+
+	// get set of providers, add provider to set.
+	providerSetForCID := mapCIDtoProviderSet[cid]
+	providerSetForCID.addProvider(addrInfo, rec.expiry)
+}
