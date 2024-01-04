@@ -5,13 +5,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/ipfs/go-cid"
-	"github.com/plprobelab/zikade/pir"
 	"reflect"
 	"strconv"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/ipfs/go-cid"
+	"github.com/plprobelab/zikade/pir"
 
 	"github.com/benbjohnson/clock"
 	"github.com/ipfs/boxo/ipns"
@@ -1466,11 +1467,22 @@ func TestDHT_normalizeRTJoinedWithPeerStore(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Len(t, resp.CloserPeers, d.cfg.BucketSize)
+
+		// TODO: Should this be zero?
 		assert.Len(t, resp.ProviderPeers, 0)
 		assert.Equal(t, len(resp.CloserPeers[0].Addrs), 1)
 
+		exists := false
+		for _, peer := range peers {
+			if resp.ContainsCloserPeer(peer) {
+				exists = true
+			}
+		}
+		assert.True(t, exists)
+
 		// TODO: Check semantic correctness: that the addrInfo(s) for each peer
 		//  are the same as the ones retrieved from d.host.Peerstore().
+		// Done?
 		resp.Reset()
 	}
 }
@@ -1552,6 +1564,7 @@ func TestDHT_handlePrivateGetProviders(t *testing.T) {
 	}
 
 	be, err := typedBackend[*ProvidersBackend](d, namespaceProviders)
+	require.NoError(t, err)
 	ctx := context.Background()
 
 	log2_num_records := 10

@@ -300,7 +300,7 @@ func (d *DHT) handlePrivateFindPeer(ctx context.Context, remote peer.ID, msg *pb
 	if err != nil {
 		return nil, err
 	}
-	println(pirResponse)
+	// println(pirResponse)
 
 	// TODO Ask Gui: handleFindPeer also looks up peerStore directly for the target key and adds it to the closerPeers.
 	// This might be necessary as we may not store the node's (KadID, PeerID) if our bucket is full,
@@ -349,12 +349,15 @@ func (d *DHT) handlePrivateGetProviderRecords(ctx context.Context, remote peer.I
 	if err != nil {
 		panic("could not typecast backend, to run the function to prepare the DB for PIR")
 	}
-	mapCIDtoProviderPeers, err := backend.MapCIDsToProviderPeersForPIR(ctx, bucketIndexLength)
+	mapCIDtoProviderPeers, err := backend.MapCIDBucketsToProviderPeerBytesForPIR(ctx, bucketIndexLength)
 	if err != nil {
 		return nil, fmt.Errorf("could not construct a map of CIDs to provider peers for PIR")
 	}
 
 	providerPeersResponse, err := private_routing.RunPIRforProviderPeersRecords(providerPeersRequest, mapCIDtoProviderPeers)
+	if err != nil {
+		return nil, fmt.Errorf("could not run PIR for provider peers")
+	}
 
 	response := &pb.Message{
 		Type:                  pb.Message_PRIVATE_GET_PROVIDERS,

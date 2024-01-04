@@ -5,14 +5,15 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"github.com/ipfs/go-cid"
-	"github.com/plprobelab/zikade/pb"
-	"google.golang.org/protobuf/proto"
 	"io"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/ipfs/go-cid"
+	"github.com/plprobelab/zikade/pb"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/benbjohnson/clock"
 	lru "github.com/hashicorp/golang-lru/v2"
@@ -295,7 +296,7 @@ func (p *ProvidersBackend) MapCIDsToProviderPeersForPIR(ctx context.Context, buc
 		}
 		marshalledRoutingEntries, err := proto.Marshal(mesg)
 		if err != nil {
-			return nil, fmt.Errorf("Could not marshal peers in RT. Err: %s ", err)
+			return nil, fmt.Errorf("could not marshal peers in RT. Err: %s ", err)
 		}
 		mapCIDtoProviderPeers[givenCID] = marshalledRoutingEntries
 
@@ -333,6 +334,13 @@ func (p *ProvidersBackend) MapCIDsToProviderPeersForPIR(ctx context.Context, buc
 	}
 
 	return secondMap, err
+}
+
+// This should be similar to the previous function, but instead of returning a map of CIDs to a list of provider peers,
+// it should return a list of CID buckets. Each CID bucket is many (cid, provider peer) pairs.
+// This is essentially the same as the previous function, but each row is marshalled to a byte array.
+func (p *ProvidersBackend) MapCIDBucketsToProviderPeerBytesForPIR(ctx context.Context, bucketIndexLength int) ([][]byte, error) {
+	return nil, fmt.Errorf("not implemented")
 }
 
 // Close is here to implement the [io.Closer] interface. This will get called
