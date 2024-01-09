@@ -1467,24 +1467,27 @@ func TestDHT_normalizeRTJoinedWithPeerStore(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Len(t, resp.CloserPeers, d.cfg.BucketSize)
-
-		// TODO: Should this be zero?
 		assert.Len(t, resp.ProviderPeers, 0)
-		assert.Equal(t, len(resp.CloserPeers[0].Addrs), 1)
+		for _, closerPeer := range resp.CloserPeers {
+			// TODO: test is failing.
+			// The buckets are padded with dummy peers, not actually peers
+			assert.Equal(t, len(closerPeer.Addrs), 1) // this is 1 because fillRoutingTable assigns 1 multiaddr to each peer
 
-		exists := false
-		for _, peer := range peers {
-			if resp.ContainsCloserPeer(peer) {
-				exists = true
+			ID := peer.ID(closerPeer.Id)
+			address := closerPeer.Addrs[0]
+			exists := false
+			for _, peer := range peers {
+				if peer == ID {
+					exists = true
+					address_bytes := d.host.Peerstore().Addrs(peer)[0].Bytes()
+					assert.Equal(t, address, address_bytes)
+				}
 			}
+			assert.True(t, exists)
 		}
-		assert.True(t, exists)
-
-		// TODO: Check semantic correctness: that the addrInfo(s) for each peer
-		//  are the same as the ones retrieved from d.host.Peerstore().
-		// Done?
 		resp.Reset()
 	}
+
 }
 
 func TestDHT_handlePrivateFindPeer(t *testing.T) {
@@ -1524,12 +1527,11 @@ func TestDHT_handlePrivateFindPeer(t *testing.T) {
 	assert.Equal(t, pb.Message_PRIVATE_FIND_NODE, resp.Type)
 	assert.Equal(t, resp.PIR_Message_ID, msg.PIR_Message_ID)
 
+	_, err = chosenPirProtocol.ProcessResponseToPlaintext(resp.CloserPeersResponse)
+	require.NoError(t, err)
+
 	// TODO: Process the response in resp.CloserPeers into plaintext form
 	//  check that at least d.cfg.BucketSize peers are returned
-	//   check that the returned peers "are approximately as close as"
-	//    the peers returned from handleGetPeers
-	//     Here this approximate distance condition will also need to be coded up
-	//      in private-go-kademlia repo while testing the o/p of normalization
 	//assert.Nil(t, resp.Record)
 	//assert.Len(t, resp.CloserPeers, d.cfg.BucketSize)
 	//assert.Len(t, resp.ProviderPeers, 0)
@@ -1537,6 +1539,10 @@ func TestDHT_handlePrivateFindPeer(t *testing.T) {
 	//printCloserPeers(resp)
 
 }
+
+// func TestDHT_compareHandleFindPeer_and_privateHandleFindPeer(t *testing.T) {
+// 	// TODO: check that the output of PrivateFindPeer includes all nodes from FindPeer that have the same CPL as the target key
+// }
 
 func TestDHT_handlePrivateGetProviders(t *testing.T) {
 	d := newTestDHT(t)
@@ -1602,7 +1608,7 @@ func TestDHT_handlePrivateGetProviders(t *testing.T) {
 	}
 
 	log2_num_Buckets := 8
-	var lookupFileCID = NewRandomContent(t)
+	var lookupFileCID = cids[0]
 	bucketIndex, err := providerAdsGenerateBucketIndexFromCID(lookupFileCID, log2_num_records, log2_num_Buckets)
 	require.NoError(t, err)
 
@@ -1627,6 +1633,8 @@ func TestDHT_handlePrivateGetProviders(t *testing.T) {
 
 	_, err = chosenPirProtocolProviderRouting.ProcessResponseToPlaintext(resp.ProviderPeersResponse)
 	require.NoError(t, err)
+
+	// // Test to make sure this works
 
 	// protoMsg := &pb.Message{
 	// 	Buckets: nil,
