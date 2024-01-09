@@ -2,9 +2,10 @@ package pir
 
 import (
 	"fmt"
-	"github.com/tuneinsight/lattigo/v5/utils/structs"
 	"math/rand"
 	"time"
+
+	"github.com/tuneinsight/lattigo/v5/utils/structs"
 
 	"github.com/plprobelab/zikade/pb"
 	"github.com/tuneinsight/lattigo/v5/core/rlwe"
@@ -30,6 +31,9 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) generateParameters() error { //
 }
 
 func (rlweStruct *SimpleRLWE_PIR_Protocol) encryptRLWEPlaintexts(plaintexts []*rlwe.Plaintext) ([]rlwe.Ciphertext, error) {
+	if rlweStruct.secret_key == nil {
+		return nil, fmt.Errorf("secret key has not been generated yet")
+	}
 	ciphertexts := make([]rlwe.Ciphertext, len(plaintexts))
 	sk_encryptor := heint.NewEncryptor(rlweStruct.parameters, rlweStruct.secret_key)
 	for i := range plaintexts {
@@ -85,22 +89,19 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) initializeResponseCTs(database [][]by
 // encodes the rows of the database into the coefficients of a plaintext
 func (rlweStruct *SimpleRLWE_PIR_Protocol) transformDBToPlaintextForm(database [][]byte) error {
 	rlweStruct.initializeResponseCTs(database)
-	num_rows := 1 << rlweStruct.log2_num_rows
+	num_db_rows := len(database)
 
 	// Generating a matrix for the transformed DB,
 	// while ensuring that the assigned slices are local in memory
 	// https://go.dev/doc/effective_go#slices
-	transformedDB := make([][]*rlwe.Plaintext, len(rlweStruct.response_ciphertexts)) // One row per unit of y.
-	// Allocate one large slice to hold (rows * columns) elements.
-	transformedRow := make([]*rlwe.Plaintext, len(rlweStruct.response_ciphertexts)*num_rows) // Has type []uint8 even though picture is [][]uint8.
-	// Loop over the rows, slicing each row from the front of the remaining pixels slice.
+	transformedDB := make([][]*rlwe.Plaintext, num_db_rows) // One row per unit of y.
 	for i := range transformedDB {
-		transformedDB[i], transformedRow = transformedRow[:num_rows], transformedRow[num_rows:]
+		transformedDB[i] = make([]*rlwe.Plaintext, len(rlweStruct.response_ciphertexts))
 	}
 
 	// WARNING: Inner loop is not parallelizable
 	for k := 0; k < len(rlweStruct.response_ciphertexts); k++ {
-		for i := 0; i < num_rows; i++ {
+		for i := 0; i < num_db_rows; i++ {
 			start_index := rlweStruct.bytesPerCiphertext * k
 			end_index := rlweStruct.bytesPerCiphertext * (k + 1)
 			if end_index > len(database[i]) {
@@ -112,7 +113,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) transformDBToPlaintextForm(database [
 				return err
 			}
 
-			transformedDB[k][i] = row_data_plaintext
+			transformedDB[i][k] = row_data_plaintext
 		}
 	}
 

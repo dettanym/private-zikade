@@ -51,6 +51,12 @@ func NewSimpleRLWE_PIR_Protocol(log2_num_rows int) *SimpleRLWE_PIR_Protocol {
 	return rlweStruct
 }
 
+func (rlweStruct *SimpleRLWE_PIR_Protocol) createPrivateKeyMaterial() error {
+	keygen := rlwe.NewKeyGenerator(rlweStruct.parameters)
+	rlweStruct.secret_key = keygen.GenSecretKeyNew()
+	return nil
+}
+
 func (rlweStruct *SimpleRLWE_PIR_Protocol) marshalRequestToPB() (*pb.PIR_Request, error) {
 	params_bytes, err := rlweStruct.parameters.MarshalBinary()
 	if err != nil {
@@ -137,8 +143,6 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) GenerateRequestFromQuery(requested_ro
 	if err != nil {
 		return nil, err
 	}
-	keygen := rlwe.NewKeyGenerator(rlweStruct.parameters)
-	rlweStruct.secret_key = keygen.GenSecretKeyNew()
 
 	encoder := heint.NewEncoder(rlweStruct.parameters)
 	num_slots := rlweStruct.parameters.MaxSlots()
@@ -291,11 +295,22 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 		return nil, err
 	}
 
+	num_db_rows := len(database)
 	num_rows := 1 << rlweStruct.log2_num_rows
+
+	// This if statement cause the algorithm to return the last row of the database,
+	// if the query is larger than the number of rows
+	if num_rows > num_db_rows {
+		for j := num_db_rows; j < num_rows; j++ {
+			evaluator.Add(indicator_bits[num_db_rows-1], indicator_bits[j], indicator_bits[num_db_rows-1])
+		}
+	}
+
 	// WARNING: Inner loop is not parallelizable
 	for k := 0; k < len(rlweStruct.response_ciphertexts); k++ {
-		for i := 0; i < num_rows; i++ {
-			row_data_plaintext := rlweStruct.plaintextDB[k][i]
+		// TODO: return last row by default
+		for i := 0; i < num_db_rows; i++ {
+			row_data_plaintext := rlweStruct.plaintextDB[i][k]
 
 			// We accumulate the results in the first cipertext so we don't require the
 			// public key to create a new ciphertext
