@@ -1,6 +1,7 @@
 package nettest
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 
@@ -26,15 +27,6 @@ func CrawledTopology(n int, clk clock.Clock) (*Topology, []*Peer, error) {
 	// unmarshal data into an array of neighbour_data
 	var neighbours []Neighbour_Data
 	json.Unmarshal([]byte(jsonFile), &neighbours)
-	// change the array of neighbour_data into an array of maps
-	// var neighbours_map []map[string]interface{}
-	// for i := range neighbours {
-	// 	neighbours_map[i] = map[string]interface{}{
-	// 		"PeerID":     neighbours[i].PeerID,
-	// 		"Neighbours": neighbours[i].Neighbours,
-	// 		"Errors":     neighbours[i].Errors,
-	// 	}
-	// }
 
 	nodes := make([]*Peer, len(neighbours))
 	top := NewTopology(clk)
@@ -53,16 +45,21 @@ func CrawledTopology(n int, clk clock.Clock) (*Topology, []*Peer, error) {
 
 	}
 
-	// Define the network topology, with network links between every node and
-	// their neighbours from the crawled data
-	// for i := range nodes {
-	// 	for j /* iterate through neighbours of neighbours[i]["neighbours"] */ {
-	// 		k := // find peer with peerID neighbours[i]["neighbours"][j]
-	// 			top.ConnectPeers(nodes[i], nodes[k])
-	// 		nodes[i].Router.AddToPeerStore(context.Background(), nodes[i-1].NodeID)
-	// 		nodes[i].RoutingTable.AddNode(nodes[i-1].NodeID)
-	// 	}
-	// }
+	// define the network topology with links between nodes and their neighbours from the crawled data
+	for i := range nodes {
+		for j := range neighbours[i].Neighbours {
+			// search for index of node with peerID neighbours[i]["neighbours"][j]
+			// and connect the nodes
+			for k := range nodes {
+				if nodes[k].NodeID.String() == neighbours[i].Neighbours[j] {
+					top.ConnectPeers(nodes[i], nodes[k])
+					nodes[i].Router.AddToPeerStore(context.Background(), nodes[k].NodeID)
+					nodes[i].RoutingTable.AddNode(nodes[k].NodeID)
+				}
+				break
+			}
+		}
+	}
 
 	return top, nodes, nil
 }
