@@ -102,14 +102,14 @@ func NormCrawledTopology(clk clock.Clock) (*Topology, []*Peer, error) {
 	for i := range nodes {
 		for j := range neighbours[i].Neighbours {
 			// search for index of node with peerID neighbours[i]["neighbours"][j]
-			// and connect the nodes
+			// and connect the nodes. if index is not found, do nothing with that neighbour -- not in list of nodes
 			for k := range nodes {
 				if nodes[k].NodeID.String() == neighbours[i].Neighbours[j] {
 					top.ConnectPeers(nodes[i], nodes[k])
 					nodes[i].Router.AddToPeerStore(context.Background(), nodes[k].NodeID)
 					nodes[i].RoutingTable.AddNode(nodes[k].NodeID)
+					break
 				}
-				break
 			}
 		}
 	}
@@ -155,8 +155,8 @@ func SimpleCrawledTopology(clk clock.Clock) (*Topology, []*Peer, error) {
 					top.ConnectPeers(nodes[i], nodes[k])
 					nodes[i].Router.AddToPeerStore(context.Background(), nodes[k].NodeID)
 					nodes[i].RoutingTable.AddNode(nodes[k].NodeID)
+					break
 				}
-				break
 			}
 		}
 	}
