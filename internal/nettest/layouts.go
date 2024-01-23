@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/plprobelab/zikade/internal/coord/routing"
+	"golang.org/x/exp/slices"
 	"os"
 
 	"github.com/benbjohnson/clock"
@@ -102,6 +103,7 @@ func GenerateCrawledTopology(clk clock.Clock, useNormalizedRT bool) (*Topology, 
 		// for each neighbour, create a peer
 		// and add it to the topology
 		id := kadt.PeerID(neighbours[i].PeerID)
+		nodeIDs[i] = id.String()
 		var rt routing.RoutingTableCpl[kadt.Key, kadt.PeerID]
 		if useNormalizedRT {
 			rt = normalizedrt.New[kadt.Key, kadt.PeerID](id, i)
@@ -120,13 +122,14 @@ func GenerateCrawledTopology(clk clock.Clock, useNormalizedRT bool) (*Topology, 
 		for j := range neighbours[i].Neighbours {
 			// search for index of node with peerID neighbours[i]["neighbours"][j]
 			// and connect the nodes. if index is not found, do nothing with that neighbour -- not in list of nodes
-			for k := range nodes {
-				if nodes[k].NodeID.String() == neighbours[i].Neighbours[j] {
-					top.ConnectPeers(nodes[i], nodes[k])
-					nodes[i].Router.AddToPeerStore(context.Background(), nodes[k].NodeID)
-					nodes[i].RoutingTable.AddNode(nodes[k].NodeID)
-					break
+			k := slices.Index(nodeIDs, neighbours[i].Neighbours[j])
+			if k != -1 {
+				top.ConnectPeers(nodes[i], nodes[k])
+				err := nodes[i].Router.AddToPeerStore(context.Background(), nodes[k].NodeID)
+				if err != nil {
+					return nil, nil, fmt.Errorf("error in adding a neighbour to node's simulated Router's PeerStore. Error: %s", err)
 				}
+				nodes[i].RoutingTable.AddNode(nodes[k].NodeID)
 			}
 		}
 	}
