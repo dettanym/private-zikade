@@ -67,9 +67,9 @@ func LinearTopology(n int, clk clock.Clock) (*Topology, []*Peer, error) {
 }
 
 type Neighbour_Data struct {
-	PeerID     string
-	Neighbours []string
-	Errors     string
+	PeerID     string   `json:"PeerID,omitempty"`
+	Neighbours []string `json:"NeighborIDs,omitempty"`
+	Errors     string   `json:"ErrorBits,omitempty"`
 }
 
 func GenerateCrawledTopology(clk clock.Clock, useNormalizedRT bool) (*Topology, []*Peer, error) {
@@ -83,16 +83,22 @@ func GenerateCrawledTopology(clk clock.Clock, useNormalizedRT bool) (*Topology, 
 
 	// unmarshal data into an array of neighbour_data
 	var neighbours []Neighbour_Data
-	json.Unmarshal(jsonFile, &neighbours)
+	err = json.Unmarshal(jsonFile, &neighbours)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not unmarshall crawled neighbours data to initialize simulation. Error: %s", err)
+	}
 
 	fmt.Println("Number of nodes: ", len(neighbours))
 	fmt.Println(neighbours[0].PeerID)
 
 	nodes := make([]*Peer, len(neighbours))
 	top := NewTopology(clk)
-
+	nodeIDs := make([]string, len(neighbours))
 	// loop through neighbours array
 	for i := range neighbours {
+		if neighbours[i].Neighbours == nil || neighbours[i].PeerID == "" {
+			return nil, nil, fmt.Errorf("unmarshalling crawled neighbours data returns an empty list of neighbours or an empty PeerID for index %d. Error: %s", i, err)
+		}
 		// for each neighbour, create a peer
 		// and add it to the topology
 		id := kadt.PeerID(neighbours[i].PeerID)
