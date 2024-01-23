@@ -15,8 +15,8 @@ func TestRoutingNormVsSimple(t *testing.T) {
 	// ctx := kadtest.CtxShort(t)
 
 	clk := clock.NewMock()
-	_, nodes, err := nettest.NormCrawledTopology(clk)
-	_, nodes_simple, err := nettest.SimpleCrawledTopology(clk)
+	_, nodes, err := nettest.GenerateCrawledTopology(clk, true)
+	_, nodes_simple, err := nettest.GenerateCrawledTopology(clk, false)
 	require.NoError(t, err)
 
 	// self := nodes[0].NodeID
