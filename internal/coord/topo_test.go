@@ -2,6 +2,8 @@ package coord
 
 import (
 	"fmt"
+	. "github.com/plprobelab/zikade/internal/coord/routing"
+	"github.com/plprobelab/zikade/kadt"
 	"math/rand"
 	"sort"
 	"testing"
@@ -31,9 +33,21 @@ func TestRoutingNormVsSimple(t *testing.T) {
 	simple_target := nodesSimpleRT[target_node].NodeID.Key()
 	require.Equal(t, target.Key(), simple_target)
 
-	rt := nodesNormalizedRT[0].RoutingTable
-	// define boolean to check if target is in seeds list
-	// seeds is a list of PeerIDs
+	clientPeerID := nodesSimpleRT[0].NodeID
+	hopCountSimple := doLookup(nodesSimpleRT, target, clientPeerID)
+
+	// TODO: Can remove the next line as they will be the same
+	clientPeerID = nodesNormalizedRT[0].NodeID
+	hopCountNormalized := doLookup(nodesSimpleRT, target, clientPeerID)
+
+	// print difference in hop count
+	fmt.Println("Norm: ", hopCountNormalized)
+	fmt.Println("Simple: ", hopCountSimple)
+	fmt.Println("Difference: ", hopCountNormalized-hopCountSimple)
+}
+
+func doLookup(nodes []*nettest.Peer, target kadt.PeerID, client kadt.PeerID) int {
+	rt := nodes[0].RoutingTable
 	seeds := rt.NearestNodes(target.Key(), 5) // 5 closest nodesNormalizedRT to target <- change if needed for various experiments
 	targetFound := false
 	// check if seeds list contains target
@@ -61,79 +75,36 @@ func TestRoutingNormVsSimple(t *testing.T) {
 		// append results to seeds list
 		for i := 0; i < 3; i++ {
 			// get the routing table of the node
-			for _, a := range nodesNormalizedRT {
+			for _, a := range nodes {
 				if a.NodeID == seeds[i] {
 					rt = a.RoutingTable
 					break
 				}
 			}
+
+			var nearestNodes []kadt.PeerID
+			if rtNormalized, isRtNormalized := rt.(interface{}).(RoutingTableCplNormalized[kadt.Key, kadt.PeerID]); isRtNormalized {
+				// TODO: NearestNodesAsServer returns the full d.cfg.Bucketsize (20) number of elements --- doesn't currently have a tunable parameter
+				//  so I set the call to NearestNodes to return back 20
+				nearestNodes = rtNormalized.NearestNodesAsServer(target.Key(), client.Key())
+			} else {
+				nearestNodes = rt.NearestNodes(target.Key(), 20)
+			}
+
 			// get the 5 closest nodesNormalizedRT to target from the routing table
 			// append to seeds list
-			seeds = append(seeds, rt.NearestNodes(target.Key(), 5)...)
-		}
-
-		hopCount++
-
-		// check if seeds list contains target
-		for _, a := range seeds {
-			if a == target {
-				targetFound = true
-				break
-			}
+			seeds = append(seeds, nearestNodes...)
 		}
 	}
 
-	// repeat process with simplert and count number of hops. then return difference.
-	rt = nodesSimpleRT[0].RoutingTable
-	seeds_simple := rt.NearestNodes(target.Key(), 5) // 5 closest nodesNormalizedRT to target <- change if needed for various experiments
-	targetFound = false
+	hopCount++
 	// check if seeds list contains target
-	for _, a := range seeds_simple {
+	for _, a := range seeds {
 		if a == target {
 			targetFound = true
 			break
 		}
 	}
-	hopCount_simple := 1
-	// while loop target_in_seeds is false
-	for targetFound == false {
-		// sort items in seeds list by distance to target
-		sort.SliceStable(seeds_simple, func(i, j int) bool {
-			distI := seeds_simple[i].Key().Xor(target.Key())
-			distJ := seeds_simple[j].Key().Xor(target.Key())
 
-			cmp := distI.Compare(distJ)
-			if cmp != 0 {
-				return cmp < 0
-			}
-			return false
-		})
-		// for i = 3 closest nodesNormalizedRT in seeds, query nearestnodes on those rts
-		// append results to seeds list
-		for i := 0; i < 3; i++ {
-			// get the routing table of the node
-			for _, a := range nodesSimpleRT {
-				if a.NodeID == seeds_simple[i] {
-					rt = a.RoutingTable
-					break
-				}
-			}
-			// get the 5 closest nodesNormalizedRT to target from the routing table
-			// append to seeds list
-			seeds_simple = append(seeds_simple, rt.NearestNodes(target.Key(), 5)...)
-		}
-		hopCount_simple++
-		// check if seeds list contains target
-		for _, a := range seeds_simple {
-			if a == target {
-				targetFound = true
-				break
-			}
-		}
-	}
-
-	// print difference in hop count
-	fmt.Println("Norm: ", hopCount)
-	fmt.Println("Simple: ", hopCount_simple)
-	fmt.Println("Difference: ", hopCount-hopCount_simple)
+	return hopCount
 }

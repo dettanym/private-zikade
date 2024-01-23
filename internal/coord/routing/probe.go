@@ -32,6 +32,7 @@ type RoutingTableCpl[K kad.Key[K], N kad.NodeID[K]] interface {
 type RoutingTableCplNormalized[K kad.Key[K], N kad.NodeID[K]] interface {
 	RoutingTableCpl[K, N]
 	NormalizeRT(id K) [][]N
+	NearestNodesAsServer(target K, client K) []N
 }
 
 // The Probe state machine performs regular connectivity checks for nodes in a routing table.
