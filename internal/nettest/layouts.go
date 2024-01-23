@@ -3,6 +3,7 @@ package nettest
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 
 	"github.com/benbjohnson/clock"
@@ -72,7 +73,8 @@ type Neighbour_Data struct {
 
 func NormCrawledTopology(clk clock.Clock) (*Topology, []*Peer, error) {
 	// this function will define the topology w.r.t how peers are distributed from the crawled data
-	jsonFile, err := os.ReadFile("coord/2024-01-15T13:02_neighbors.json")
+	pwd, _ := os.Getwd()
+	jsonFile, err := os.ReadFile(pwd + "/../nettest/2024-01-15T13:02_neighbors.json")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -119,7 +121,9 @@ func NormCrawledTopology(clk clock.Clock) (*Topology, []*Peer, error) {
 
 func SimpleCrawledTopology(clk clock.Clock) (*Topology, []*Peer, error) {
 	// this function will define the topology w.r.t how peers are distributed from the crawled data
-	jsonFile, err := os.ReadFile("coord/2024-01-15T13:02_neighbors.json")
+	// read json file in nettest
+	pwd, _ := os.Getwd()
+	jsonFile, err := os.ReadFile(pwd + "/../nettest/2024-01-15T13:02_neighbors.json")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -127,6 +131,9 @@ func SimpleCrawledTopology(clk clock.Clock) (*Topology, []*Peer, error) {
 	// unmarshal data into an array of neighbour_data
 	var neighbours []Neighbour_Data
 	json.Unmarshal([]byte(jsonFile), &neighbours)
+
+	fmt.Println("Number of nodes: ", len(neighbours))
+	fmt.Println(neighbours[0].PeerID)
 
 	nodes := make([]*Peer, len(neighbours))
 	top := NewTopology(clk)
