@@ -18,6 +18,8 @@ func TestRoutingNormVsSimple(t *testing.T) {
 
 	clk := clock.NewMock()
 	_, nodesNormalizedRT, err := nettest.GenerateCrawledTopology(clk, true)
+	require.NoError(t, err)
+
 	_, nodesSimpleRT, err := nettest.GenerateCrawledTopology(clk, false)
 	require.NoError(t, err)
 

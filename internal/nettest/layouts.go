@@ -117,8 +117,10 @@ func GenerateCrawledTopology(clk clock.Clock, useNormalizedRT bool) (*Topology, 
 		}
 	}
 
+	numberOfPeersWithNonEmptyRTs := 0
 	// define the network topology with links between nodes and their neighbours from the crawled data
 	for i := range nodes {
+		numberOfNeighboursAdded := 0
 		for j := range neighbours[i].Neighbours {
 			// search for index of node with peerID neighbours[i]["neighbours"][j]
 			// and connect the nodes. if index is not found, do nothing with that neighbour -- not in list of nodes
@@ -129,9 +131,18 @@ func GenerateCrawledTopology(clk clock.Clock, useNormalizedRT bool) (*Topology, 
 				if err != nil {
 					return nil, nil, fmt.Errorf("error in adding a neighbour to node's simulated Router's PeerStore. Error: %s", err)
 				}
-				nodes[i].RoutingTable.AddNode(nodes[k].NodeID)
+				added := nodes[i].RoutingTable.AddNode(nodes[k].NodeID)
+				if added {
+					numberOfNeighboursAdded += 1
+				}
 			}
 		}
+		if numberOfNeighboursAdded > 0 {
+			numberOfPeersWithNonEmptyRTs += 1
+		}
+	}
+	if numberOfPeersWithNonEmptyRTs <= len(neighbours)/2 {
+		return nil, nil, fmt.Errorf("more than half of peers' (%d out of %d) neighbours did not show up as a peer, so these peers' RTs are empty", numberOfPeersWithNonEmptyRTs, len(neighbours))
 	}
 
 	return top, nodes, nil
