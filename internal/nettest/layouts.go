@@ -4,9 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+
 	"github.com/plprobelab/zikade/internal/coord/routing"
 	"golang.org/x/exp/slices"
-	"os"
 
 	"github.com/benbjohnson/clock"
 	"github.com/plprobelab/go-kademlia/routing/normalizedrt"
@@ -77,7 +78,7 @@ func GenerateCrawledTopology(clk clock.Clock, useNormalizedRT bool) (*Topology, 
 	// this function will define the topology w.r.t how peers are distributed from the crawled data
 	// read json file in nettest
 	pwd, _ := os.Getwd()
-	jsonFile, err := os.ReadFile(pwd + "/../nettest/2024-01-15T13:02_neighbors.json")
+	jsonFile, err := os.ReadFile(pwd + "/../nettest/2024-01-26T09:59_neighbors.json")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -103,7 +104,7 @@ func GenerateCrawledTopology(clk clock.Clock, useNormalizedRT bool) (*Topology, 
 		// for each neighbour, create a peer
 		// and add it to the topology
 		id := kadt.PeerID(neighbours[i].PeerID)
-		nodeIDs[i] = id.String()
+		nodeIDs[i] = neighbours[i].PeerID //.String()
 		var rt routing.RoutingTableCpl[kadt.Key, kadt.PeerID]
 		if useNormalizedRT {
 			rt = normalizedrt.New[kadt.Key, kadt.PeerID](id, i)

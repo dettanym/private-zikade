@@ -2,11 +2,12 @@ package coord
 
 import (
 	"fmt"
-	. "github.com/plprobelab/zikade/internal/coord/routing"
-	"github.com/plprobelab/zikade/kadt"
 	"math/rand"
 	"sort"
 	"testing"
+
+	. "github.com/plprobelab/zikade/internal/coord/routing"
+	"github.com/plprobelab/zikade/kadt"
 
 	"github.com/benbjohnson/clock"
 	"github.com/plprobelab/zikade/internal/nettest"
@@ -27,6 +28,7 @@ func TestRoutingNormVsSimple(t *testing.T) {
 
 	num_nodes := len(nodesNormalizedRT)
 	fmt.Println("Number of nodesNormalizedRT: ", num_nodes)
+	fmt.Println("Number of nodesSimpleRT: ", len(nodesSimpleRT))
 	// select number from 0 to num_nodes-1 at random
 	// generate random integer between 0 and num_nodes-1
 	target_node := rand.Intn(num_nodes - 1)
@@ -36,11 +38,13 @@ func TestRoutingNormVsSimple(t *testing.T) {
 	require.Equal(t, target.Key(), simple_target)
 
 	clientPeerID := nodesSimpleRT[0].NodeID
-	hopCountSimple := doLookup(nodesSimpleRT, target, clientPeerID)
+	hopCountSimple, err := doLookup(nodesSimpleRT, target, clientPeerID)
+	require.NoError(t, err)
 
 	// TODO: Can remove the next line as they will be the same
 	clientPeerID = nodesNormalizedRT[0].NodeID
-	hopCountNormalized := doLookup(nodesSimpleRT, target, clientPeerID)
+	hopCountNormalized, err := doLookup(nodesSimpleRT, target, clientPeerID)
+	require.NoError(t, err)
 
 	// print difference in hop count
 	fmt.Println("Norm: ", hopCountNormalized)
@@ -48,9 +52,12 @@ func TestRoutingNormVsSimple(t *testing.T) {
 	fmt.Println("Difference: ", hopCountNormalized-hopCountSimple)
 }
 
-func doLookup(nodes []*nettest.Peer, target kadt.PeerID, client kadt.PeerID) int {
+func doLookup(nodes []*nettest.Peer, target kadt.PeerID, client kadt.PeerID) (int, error) {
 	rt := nodes[0].RoutingTable
 	seeds := rt.NearestNodes(target.Key(), 5) // 5 closest nodesNormalizedRT to target <- change if needed for various experiments
+	if len(seeds) < 5 {
+		return 0, fmt.Errorf("nearest nodes returns less than 5 nodes: %d", len(seeds))
+	}
 	targetFound := false
 	// check if seeds list contains target
 	for _, a := range seeds {
@@ -108,5 +115,5 @@ func doLookup(nodes []*nettest.Peer, target kadt.PeerID, client kadt.PeerID) int
 		}
 	}
 
-	return hopCount
+	return hopCount, nil
 }
