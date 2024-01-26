@@ -37,13 +37,13 @@ func TestRoutingNormVsSimple(t *testing.T) {
 	simple_target := nodesSimpleRT[target_node].NodeID.Key()
 	require.Equal(t, target.Key(), simple_target)
 
-	clientPeerID := nodesSimpleRT[0].NodeID
-	hopCountSimple, err := doLookup(nodesSimpleRT, target, clientPeerID)
+	// TODO: Can remove the next line as they will be the same
+	clientPeerID := nodesNormalizedRT[0].NodeID
+	hopCountNormalized, err := doLookup(nodesSimpleRT, target, clientPeerID)
 	require.NoError(t, err)
 
-	// TODO: Can remove the next line as they will be the same
-	clientPeerID = nodesNormalizedRT[0].NodeID
-	hopCountNormalized, err := doLookup(nodesSimpleRT, target, clientPeerID)
+	clientPeerID = nodesSimpleRT[0].NodeID
+	hopCountSimple, err := doLookup(nodesSimpleRT, target, clientPeerID)
 	require.NoError(t, err)
 
 	// print difference in hop count
@@ -54,9 +54,19 @@ func TestRoutingNormVsSimple(t *testing.T) {
 
 func doLookup(nodes []*nettest.Peer, target kadt.PeerID, client kadt.PeerID) (int, error) {
 	rt := nodes[0].RoutingTable
-	seeds := rt.NearestNodes(target.Key(), 5) // 5 closest nodesNormalizedRT to target <- change if needed for various experiments
-	if len(seeds) < 5 {
-		return 0, fmt.Errorf("nearest nodes returns less than 5 nodes: %d", len(seeds))
+	var nearestNodes []kadt.PeerID
+	if rtNormalized, isRtNormalized := rt.(interface{}).(RoutingTableCplNormalized[kadt.Key, kadt.PeerID]); isRtNormalized {
+		// TODO: NearestNodesAsServer returns the full d.cfg.Bucketsize (20) number of elements --- doesn't currently have a tunable parameter
+		//  so I set the call to NearestNodes to return back 20
+		nearestNodes = rtNormalized.NearestNodesAsServer(target.Key(), client.Key())
+	} else {
+		nearestNodes = rt.NearestNodes(target.Key(), 20)
+	}
+	var seeds []kadt.PeerID
+	seeds = append(seeds, nearestNodes...)
+	// seeds := rt.NearestNodes(target.Key(), 5) // 5 closest nodesNormalizedRT to target <- change if needed for various experiments
+	if len(seeds) < 20 {
+		return 0, fmt.Errorf("nearest nodes returns less than 20 nodes: %d", len(seeds))
 	}
 	targetFound := false
 	// check if seeds list contains target
@@ -91,7 +101,7 @@ func doLookup(nodes []*nettest.Peer, target kadt.PeerID, client kadt.PeerID) (in
 				}
 			}
 
-			var nearestNodes []kadt.PeerID
+			// var nearestNodes []kadt.PeerID
 			if rtNormalized, isRtNormalized := rt.(interface{}).(RoutingTableCplNormalized[kadt.Key, kadt.PeerID]); isRtNormalized {
 				// TODO: NearestNodesAsServer returns the full d.cfg.Bucketsize (20) number of elements --- doesn't currently have a tunable parameter
 				//  so I set the call to NearestNodes to return back 20
@@ -100,7 +110,6 @@ func doLookup(nodes []*nettest.Peer, target kadt.PeerID, client kadt.PeerID) (in
 				nearestNodes = rt.NearestNodes(target.Key(), 20)
 			}
 
-			// get the 5 closest nodesNormalizedRT to target from the routing table
 			// append to seeds list
 			seeds = append(seeds, nearestNodes...)
 		}
