@@ -54,7 +54,8 @@ func TestRoutingNormVsTrie(t *testing.T) {
 }
 
 func doLookup(nodes []*nettest.Peer, target kadt.PeerID, client kadt.PeerID) (int, error) {
-
+	// TODO: rt should, for the first lookup, refer to the client peer's rt.
+	//  Not just any random peer's RT for the seeds
 	rt := nodes[0].RoutingTable
 	var nearestNodes []kadt.PeerID
 	if rtNormalized, isRtNormalized := rt.(interface{}).(RoutingTableCplNormalized[kadt.Key, kadt.PeerID]); isRtNormalized {
