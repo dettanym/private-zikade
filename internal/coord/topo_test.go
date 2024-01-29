@@ -14,45 +14,49 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRoutingNormVsSimple(t *testing.T) {
+func TestRoutingNormVsTrie(t *testing.T) {
 	// ctx := kadtest.CtxShort(t)
 
 	clk := clock.NewMock()
 	_, nodesNormalizedRT, err := nettest.GenerateCrawledTopology(clk, true)
 	require.NoError(t, err)
 
-	_, nodesSimpleRT, err := nettest.GenerateCrawledTopology(clk, false)
+	_, nodesTrieRT, err := nettest.GenerateCrawledTopology(clk, false)
 	require.NoError(t, err)
 
 	// self := nodesNormalizedRT[0].NodeID
 
 	num_nodes := len(nodesNormalizedRT)
 	fmt.Println("Number of nodesNormalizedRT: ", num_nodes)
-	fmt.Println("Number of nodesSimpleRT: ", len(nodesSimpleRT))
+	fmt.Println("Number of nodesTrieRT: ", len(nodesTrieRT))
 	// select number from 0 to num_nodes-1 at random
 	// generate random integer between 0 and num_nodes-1
 	target_node := rand.Intn(num_nodes - 1)
 	target := nodesNormalizedRT[target_node].NodeID
 
-	simple_target := nodesSimpleRT[target_node].NodeID.Key()
-	require.Equal(t, target.Key(), simple_target)
+	trie_target := nodesTrieRT[target_node].NodeID.Key()
+	require.Equal(t, target.Key(), trie_target)
 
-	// TODO: Can remove the next line as they will be the same
-	clientPeerID := nodesNormalizedRT[0].NodeID
-	hopCountNormalized, err := doLookup(nodesSimpleRT, target, clientPeerID)
+	clientPeerID := nodesTrieRT[0].NodeID
+	hopCountTrie, err := doLookup(nodesTrieRT, target, clientPeerID)
 	require.NoError(t, err)
 
-	clientPeerID = nodesSimpleRT[0].NodeID
-	hopCountSimple, err := doLookup(nodesSimpleRT, target, clientPeerID)
+	// TODO: Can remove the next line as they will be the same
+	clientPeerID = nodesNormalizedRT[0].NodeID
+	hopCountNormalized, err := doLookup(nodesTrieRT, target, clientPeerID)
 	require.NoError(t, err)
 
 	// print difference in hop count
 	fmt.Println("Norm: ", hopCountNormalized)
-	fmt.Println("Simple: ", hopCountSimple)
-	fmt.Println("Difference: ", hopCountNormalized-hopCountSimple)
+	fmt.Println("Trie: ", hopCountTrie)
+	fmt.Println("Difference: ", hopCountNormalized-hopCountTrie)
 }
 
 func doLookup(nodes []*nettest.Peer, target kadt.PeerID, client kadt.PeerID) (int, error) {
+	// target := ts.nodes[3].NodeID.Key()
+	// rt := ts.nodes[0].RoutingTable
+	// seeds := rt.NearestNodes(target, 5)
+
 	rt := nodes[0].RoutingTable
 	var nearestNodes []kadt.PeerID
 	if rtNormalized, isRtNormalized := rt.(interface{}).(RoutingTableCplNormalized[kadt.Key, kadt.PeerID]); isRtNormalized {
@@ -62,9 +66,9 @@ func doLookup(nodes []*nettest.Peer, target kadt.PeerID, client kadt.PeerID) (in
 	} else {
 		nearestNodes = rt.NearestNodes(target.Key(), 20)
 	}
+	fmt.Println("Nearest nodes: ", nearestNodes)
 	var seeds []kadt.PeerID
 	seeds = append(seeds, nearestNodes...)
-	// seeds := rt.NearestNodes(target.Key(), 5) // 5 closest nodesNormalizedRT to target <- change if needed for various experiments
 	if len(seeds) < 20 {
 		return 0, fmt.Errorf("nearest nodes returns less than 20 nodes: %d", len(seeds))
 	}

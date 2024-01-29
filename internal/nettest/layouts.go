@@ -11,7 +11,6 @@ import (
 
 	"github.com/benbjohnson/clock"
 	"github.com/plprobelab/go-kademlia/routing/normalizedrt"
-	"github.com/plprobelab/go-kademlia/routing/simplert"
 	"github.com/plprobelab/go-libdht/kad/triert"
 
 	"github.com/plprobelab/zikade/kadt"
@@ -109,7 +108,10 @@ func GenerateCrawledTopology(clk clock.Clock, useNormalizedRT bool) (*Topology, 
 		if useNormalizedRT {
 			rt = normalizedrt.New[kadt.Key, kadt.PeerID](id, i)
 		} else {
-			rt = simplert.New[kadt.Key, kadt.PeerID](id, i)
+			rt, err = triert.New[kadt.Key, kadt.PeerID](id, nil)
+			if err != nil {
+				return nil, nil, err
+			}
 		}
 		nodes[i] = &Peer{
 			NodeID:       id,
@@ -145,6 +147,5 @@ func GenerateCrawledTopology(clk clock.Clock, useNormalizedRT bool) (*Topology, 
 	if numberOfPeersWithNonEmptyRTs <= len(neighbours)/2 {
 		return nil, nil, fmt.Errorf("more than half of peers' (%d out of %d) neighbours did not show up as a peer, so these peers' RTs are empty", numberOfPeersWithNonEmptyRTs, len(neighbours))
 	}
-
 	return top, nodes, nil
 }
