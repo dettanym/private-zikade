@@ -74,7 +74,7 @@ func doLookup(nodes []*nettest.Peer, target kadt.PeerID, client kadt.PeerID) (in
 	targetFound := false
 	// check if seeds list contains target
 	if slices.Contains(seeds, target) {
-		return 0, nil
+		return 1, nil
 	}
 	hopCount := 1
 	sort.SliceStable(seeds, func(i, j int) bool {
