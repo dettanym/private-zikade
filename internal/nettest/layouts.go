@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/plprobelab/zikade/internal/coord/routing"
 	"golang.org/x/exp/slices"
 
@@ -102,7 +103,8 @@ func GenerateCrawledTopology(clk clock.Clock, useNormalizedRT bool) (*Topology, 
 		}
 		// for each neighbour, create a peer
 		// and add it to the topology
-		id := kadt.PeerID(neighbours[i].PeerID) // this is not correct mapping of string to peerID
+		pid, err := peer.Decode(neighbours[i].PeerID)
+		id := kadt.PeerID(pid)
 		nodeIDs[i] = neighbours[i].PeerID
 		var rt routing.RoutingTableCpl[kadt.Key, kadt.PeerID]
 		if useNormalizedRT {
