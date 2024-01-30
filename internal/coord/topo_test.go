@@ -2,7 +2,6 @@ package coord
 
 import (
 	"fmt"
-	"math/rand"
 	"sort"
 	"testing"
 

@@ -102,14 +102,14 @@ func GenerateCrawledTopology(clk clock.Clock, useNormalizedRT bool) (*Topology, 
 		}
 		// for each neighbour, create a peer
 		// and add it to the topology
-		id := kadt.PeerID(neighbours[i].PeerID)
-		nodeIDs[i] = neighbours[i].PeerID //.String()
+		id := kadt.PeerID(neighbours[i].PeerID) // this is not correct mapping of string to peerID
+		nodeIDs[i] = neighbours[i].PeerID
 		var rt routing.RoutingTableCpl[kadt.Key, kadt.PeerID]
 		if useNormalizedRT {
-			rt = normalizedrt.New[kadt.Key, kadt.PeerID](id, i)
+			bucketSize := 20
+			rt = normalizedrt.New[kadt.Key, kadt.PeerID](id, bucketSize)
 		} else {
 			rt, err = triert.New[kadt.Key, kadt.PeerID](id, nil)
-			// rt = simplert.New[kadt.Key, kadt.PeerID](id, 20)
 			if err != nil {
 				return nil, nil, err
 			}
