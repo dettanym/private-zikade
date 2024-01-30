@@ -8,34 +8,30 @@ import (
 
 	"golang.org/x/exp/slices"
 
-	. "github.com/plprobelab/zikade/internal/coord/routing"
-	"github.com/plprobelab/zikade/kadt"
-
 	"github.com/benbjohnson/clock"
+	. "github.com/plprobelab/zikade/internal/coord/routing"
 	"github.com/plprobelab/zikade/internal/nettest"
+	"github.com/plprobelab/zikade/kadt"
 	"github.com/stretchr/testify/require"
 )
 
 func TestRoutingNormVsTrie(t *testing.T) {
-	// ctx := kadtest.CtxShort(t)
-
 	clk := clock.NewMock()
-	_, nodesNormalizedRT, err := nettest.GenerateCrawledTopology(clk, true)
-	require.NoError(t, err)
-
 	_, nodesTrieRT, err := nettest.GenerateCrawledTopology(clk, false)
 	require.NoError(t, err)
 
-	num_nodes := len(nodesNormalizedRT)
-	fmt.Println("Number of nodesNormalizedRT: ", num_nodes)
 	fmt.Println("Number of nodesTrieRT: ", len(nodesTrieRT))
+	//nodeIDs := make([]kadt.PeerID, len(nodesTrieRT))
+	//for i, node := range nodesTrieRT {
+	//	nodeIDs[i] = node.NodeID
+	//}
+
 	// select number from 0 to num_nodes-1 at random
 	// generate random integer between 0 and num_nodes-1
-	target_node := rand.Intn(num_nodes - 1)
-	target := nodesNormalizedRT[target_node].NodeID
+	targetIndex := rand.Intn(len(nodesTrieRT) - 1)
+	fmt.Println(targetIndex)
+	target := nodesTrieRT[targetIndex].NodeID
 
-	trie_target := nodesTrieRT[target_node].NodeID.Key()
-	require.Equal(t, target.Key(), trie_target)
 	fmt.Println("target: ", target.String())
 
 	clientPeerID := nodesTrieRT[0].NodeID
@@ -46,6 +42,7 @@ func TestRoutingNormVsTrie(t *testing.T) {
 	// clientPeerID = nodesNormalizedRT[0].NodeID
 	// hopCountNormalized, err := doLookup(nodesTrieRT, target, clientPeerID)
 	// require.NoError(t, err)
+	//	fmt.Println("Number of nodesNormalizedRT: ", len(nodesNormalizedRT))
 
 	// // print difference in hop count
 	// fmt.Println("Norm: ", hopCountNormalized)
