@@ -109,6 +109,7 @@ func GenerateCrawledTopology(clk clock.Clock, useNormalizedRT bool) (*Topology, 
 			rt = normalizedrt.New[kadt.Key, kadt.PeerID](id, i)
 		} else {
 			rt, err = triert.New[kadt.Key, kadt.PeerID](id, nil)
+			// rt = simplert.New[kadt.Key, kadt.PeerID](id, 20)
 			if err != nil {
 				return nil, nil, err
 			}
