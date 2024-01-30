@@ -39,8 +39,8 @@ func TestRoutingNormVsTrie(t *testing.T) {
 	require.NoError(t, err)
 	fmt.Println("Trie: ", hopCountTrie)
 
-	// clientPeerID = nodesNormalizedRT[0].NodeID
-	// hopCountNormalized, err := doLookup(nodesTrieRT, target, clientPeerID)
+	// _, nodesNormalizedRT, err := nettest.GenerateCrawledTopology(clk, true)
+	// hopCountNormalized, err := doLookup(nodesNormalizedRT, target, clientPeerID)
 	// require.NoError(t, err)
 	//	fmt.Println("Number of nodesNormalizedRT: ", len(nodesNormalizedRT))
 
