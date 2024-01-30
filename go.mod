@@ -135,6 +135,6 @@ require (
 	lukechampine.com/blake3 v1.2.1 // indirect
 )
 
-replace github.com/plprobelab/go-kademlia v0.0.0-unpublished => github.com/dettanym/private-go-kademlia v0.0.0-20231212182206-17418486df39 //../private-go-kademlia
+replace github.com/plprobelab/go-kademlia v0.0.0-unpublished => github.com/dettanym/private-go-kademlia v0.0.0-20231219144431-d35ecc33f86f //../private-go-kademlia
 
 replace github.com/ipfs/go-ds-leveldb v0.5.0 => github.com/dettanym/go-ds-leveldb v0.0.0-20230930021941-caec7a2eae31
