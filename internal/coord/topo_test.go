@@ -142,7 +142,10 @@ func doLookupSimplified(nodes []*nettest.Peer, nodeIDs []kadt.PeerID, target kad
 		seeds = seedsNextRound
 
 		hopCount++
-		fmt.Println(hopCount)
+		if hopCount > 256 {
+			return -1, fmt.Errorf("could not find the node")
+		}
+		fmt.Println("hopCount", hopCount)
 	}
 	return hopCount, nil
 }
