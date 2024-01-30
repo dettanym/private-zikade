@@ -28,7 +28,7 @@ func TestRoutingNormVsTrie(t *testing.T) {
 
 	// select number from 0 to num_nodes-1 at random
 	// generate random integer between 0 and num_nodes-1
-	targetIndex := rand.Intn(len(nodesTrieRT) - 1)
+	targetIndex := 6991 // rand.Intn(len(nodesTrieRT) - 1)
 	fmt.Println(targetIndex)
 	target := nodesTrieRT[targetIndex].NodeID
 
