@@ -408,9 +408,6 @@ func (d *DHT) NormalizeRTJoinedWithPeerStore(queryingPeerKadId kadt.Key) ([][]by
 	for bid, bucket := range bucketsWithPeerIDs {
 		addrInfos := make([]*pb.Message_Peer, len(bucket))
 		for i, peerID := range bucket {
-			if len(peerID) == 0 {
-				fmt.Println("Nil peer ID in bucket", bid, "length", len(bucket), "bucket", bucket)
-			}
 			peerInfo := d.host.Peerstore().PeerInfo(peer.ID(peerID))
 			messagePeer := pb.FromAddrInfo(peerInfo)
 			addrInfos[i] = messagePeer
