@@ -5,6 +5,7 @@ import (
 	"sort"
 	"testing"
 
+	"golang.org/x/exp/rand"
 	"golang.org/x/exp/slices"
 
 	"github.com/benbjohnson/clock"
@@ -18,8 +19,13 @@ func TestRoutingNormVsTrie(t *testing.T) {
 	clk := clock.NewMock()
 	_, nodesTrieRT, err := nettest.GenerateCrawledTopology(clk, false)
 	require.NoError(t, err)
+	_, nodesNormalizedRT, err := nettest.GenerateCrawledTopology(clk, true)
+	require.NoError(t, err)
+
+	clientPeerID := nodesTrieRT[0].NodeID
 
 	fmt.Println("Number of nodesTrieRT: ", len(nodesTrieRT))
+	// fmt.Println("Number of nodesNormalizedRT: ", len(nodesNormalizedRT))
 	nodeIDs := make([]kadt.PeerID, len(nodesTrieRT))
 	for i, node := range nodesTrieRT {
 		nodeIDs[i] = node.NodeID
@@ -28,25 +34,36 @@ func TestRoutingNormVsTrie(t *testing.T) {
 	// select number from 0 to num_nodes-1 at random
 	// generate random integer between 0 and num_nodes-1
 	targetIndex := 6991 // rand.Intn(len(nodesTrieRT) - 1)
-	fmt.Println(targetIndex)
-	target := nodesTrieRT[targetIndex].NodeID
+	var targets []int
+	var differences []int
+	for i := 0; i < 100; i++ {
 
-	fmt.Println("target: ", target.String())
+		targetIndex = rand.Intn(len(nodesTrieRT) - 1)
+		// while targetIndex is in targets list, generate new random integer
+		for slices.Contains(targets, targetIndex) {
+			targetIndex = rand.Intn(len(nodesTrieRT) - 1)
+		}
+		// add target index to targets list
+		targets = append(targets, targetIndex)
+		// fmt.Println(targetIndex)
+		target := nodesTrieRT[targetIndex].NodeID
+		fmt.Println("target: ", target.String())
 
-	clientPeerID := nodesTrieRT[0].NodeID
-	hopCountTrie, err := doLookupSimplified(nodesTrieRT, nodeIDs, target, clientPeerID)
-	require.NoError(t, err)
-	fmt.Println("Trie: ", hopCountTrie)
+		hopCountTrie, err := doLookupSimplified(nodesTrieRT, nodeIDs, target, clientPeerID)
+		require.NoError(t, err)
+		fmt.Println("Trie: ", hopCountTrie)
 
-	// _, nodesNormalizedRT, err := nettest.GenerateCrawledTopology(clk, true)
-	// hopCountNormalized, err := doLookup(nodesNormalizedRT, target, clientPeerID)
-	// require.NoError(t, err)
-	//	fmt.Println("Number of nodesNormalizedRT: ", len(nodesNormalizedRT))
+		hopCountNormalized, err := doLookupSimplified(nodesNormalizedRT, nodeIDs, target, clientPeerID)
+		require.NoError(t, err)
 
-	// // print difference in hop count
-	// fmt.Println("Norm: ", hopCountNormalized)
-	// fmt.Println("Trie: ", hopCountTrie)
-	// fmt.Println("Difference: ", hopCountNormalized-hopCountTrie)
+		// print difference in hop count
+		fmt.Println("Norm: ", hopCountNormalized)
+		fmt.Println("Trie: ", hopCountTrie)
+		fmt.Println("Difference: ", hopCountNormalized-hopCountTrie)
+		differences = append(differences, hopCountNormalized-hopCountTrie)
+	}
+	fmt.Println("Differences: ", differences)
+
 }
 
 func doLookupSimplified(nodes []*nettest.Peer, nodeIDs []kadt.PeerID, target kadt.PeerID, client kadt.PeerID) (int, error) {
@@ -95,11 +112,11 @@ func doLookupSimplified(nodes []*nettest.Peer, nodeIDs []kadt.PeerID, target kad
 		// pick top 20 from seeds
 		seeds = seeds[:20]
 
-		for _, peerID := range seeds {
-			cpl := peerID.Key().CommonPrefixLength(target.Key())
-			fmt.Println(cpl)
-		}
-		fmt.Printf("maxCPL %d\n", target.Key().CommonPrefixLength(seeds[0].Key()))
+		// for _, peerID := range seeds {
+		// 	cpl := peerID.Key().CommonPrefixLength(target.Key())
+		// 	fmt.Println(cpl)
+		// }
+		// fmt.Printf("maxCPL %d\n", target.Key().CommonPrefixLength(seeds[0].Key()))
 
 		// as long as the target is not found,
 		// for all nodes in seeds, get their RTs, query nearestnodes on those rts
