@@ -33,10 +33,12 @@ func TestRoutingNormVsTrie(t *testing.T) {
 
 	// select number from 0 to num_nodes-1 at random
 	// generate random integer between 0 and num_nodes-1
-	targetIndex := 6991 // rand.Intn(len(nodesTrieRT) - 1)
+	// targetIndex := 6991 // rand.Intn(len(nodesTrieRT) - 1)
+	var targetIndex int
 	var targets []int
 	var differences []int
-	for i := 0; i < 100; i++ {
+	var hopCounts []int
+	for i := 0; i < 5000; i++ {
 
 		targetIndex = rand.Intn(len(nodesTrieRT) - 1)
 		// while targetIndex is in targets list, generate new random integer
@@ -51,7 +53,6 @@ func TestRoutingNormVsTrie(t *testing.T) {
 
 		hopCountTrie, err := doLookupSimplified(nodesTrieRT, nodeIDs, target, clientPeerID)
 		require.NoError(t, err)
-		fmt.Println("Trie: ", hopCountTrie)
 
 		hopCountNormalized, err := doLookupSimplified(nodesNormalizedRT, nodeIDs, target, clientPeerID)
 		require.NoError(t, err)
@@ -61,8 +62,19 @@ func TestRoutingNormVsTrie(t *testing.T) {
 		fmt.Println("Trie: ", hopCountTrie)
 		fmt.Println("Difference: ", hopCountNormalized-hopCountTrie)
 		differences = append(differences, hopCountNormalized-hopCountTrie)
+		hopCounts = append(hopCounts, hopCountTrie)
 	}
-	fmt.Println("Differences: ", differences)
+	// compute sum of differences
+	sum_diff := 0
+	for _, diff := range differences {
+		sum_diff += diff
+	}
+	sum_hops := 0
+	for _, hop := range hopCounts {
+		sum_hops += hop
+	}
+	fmt.Println("Differences average: ", sum_diff/len(differences), " max: ", slices.Max(differences), "sum: ", sum_diff)
+	fmt.Println("HopCounts average: ", sum_hops/len(hopCounts), " max: ", slices.Max(hopCounts))
 
 }
 
@@ -149,9 +161,14 @@ func doLookupSimplified(nodes []*nettest.Peer, nodeIDs []kadt.PeerID, target kad
 			seedsNextRound = append(seedsNextRound, nearestNodes...)
 		}
 
-		for i, seed := range seedsNextRound {
-			if slices.Contains(seeds, seed) {
-				seedsNextRound = slices.Delete(seedsNextRound, i, i+1)
+		// removes values in seedsNextRound that are in seeds
+		// this is slower than what was here before but it does not break due to wrong index being accessed
+		for _, seed := range seeds {
+			for i := 0; i < len(seedsNextRound); i++ {
+				if seedsNextRound[i] == seed {
+					seedsNextRound = slices.Delete(seedsNextRound, i, i+1)
+					break
+				}
 			}
 		}
 
@@ -161,7 +178,7 @@ func doLookupSimplified(nodes []*nettest.Peer, nodeIDs []kadt.PeerID, target kad
 		if hopCount > 256 {
 			return -1, fmt.Errorf("could not find the node")
 		}
-		fmt.Println("hopCount", hopCount)
+		// fmt.Println("hopCount", hopCount)
 	}
 	return hopCount, nil
 }
