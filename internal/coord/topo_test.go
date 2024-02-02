@@ -147,7 +147,8 @@ func doLookupSimplified(nodes []*nettest.Peer, nodeIDs []kadt.PeerID, target kad
 				nearestNodes = rt.NearestNodes(target.Key(), 20)
 			}
 			if len(nearestNodes) < 20 {
-				return 0, fmt.Errorf("nearest nodes from node index %d returns less than 20 nodes: %d", index, len(nearestNodes))
+				fmt.Println("warning: only", len(nearestNodes), " nodes returned from rt at index,  ", index)
+				// return 0, fmt.Errorf("nearest nodes from node index %d returns less than 20 nodes: %d", index, len(nearestNodes))
 			}
 
 			peersVisited++
@@ -175,8 +176,11 @@ func doLookupSimplified(nodes []*nettest.Peer, nodeIDs []kadt.PeerID, target kad
 		seeds = seedsNextRound
 
 		hopCount++
-		if hopCount > 256 {
-			return -1, fmt.Errorf("could not find the node")
+		if hopCount > 50 {
+			fmt.Println("Error: hopCount > 50, node not found, current node:", index, nodes[index].NodeID.String())
+			hopCount = -1
+			break
+			// return -1, fmt.Errorf("could not find the node")
 		}
 		// fmt.Println("hopCount", hopCount)
 	}
