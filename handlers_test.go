@@ -1458,12 +1458,8 @@ func TestDHT_normalizeRTJoinedWithPeerStore(t *testing.T) {
 	normalizedRT, err := d.NormalizeRTJoinedWithPeerStore(kadt.PeerID(peers[0]).Key())
 	require.NoError(t, err)
 
-	resp := &pb.Message{
-		CloserPeers: nil,
-	}
-
-	for _, marshalledBucket := range normalizedRT {
-		err := proto.Unmarshal(marshalledBucket, resp)
+	for _, paddedMarshalledBucket := range normalizedRT {
+		resp, err := transformPlaintextRoutingEntriesToPB(paddedMarshalledBucket)
 		require.NoError(t, err)
 
 		assert.Len(t, resp.CloserPeers, d.cfg.BucketSize)
@@ -1493,7 +1489,7 @@ func TestDHT_normalizeRTJoinedWithPeerStore(t *testing.T) {
 func TestDHT_handlePrivateFindPeer(t *testing.T) {
 	d := newTestDHT(t)
 
-	queryingPeer := newPeerID(t)
+	// queryingPeer := newPeerID(t)
 
 	peers := fillRoutingTable(t, d, 250)
 
@@ -1501,17 +1497,19 @@ func TestDHT_handlePrivateFindPeer(t *testing.T) {
 	printCPLAndBucketSizes(d, peers)
 
 	// First generate PIR request
-	keyBytes := []byte("random-key")
+	// keyBytes := []byte("key")
 
-	targetKey := kadt.PeerID(keyBytes).Key()
-	serverKey := kadt.PeerID(queryingPeer).Key()
-	cpl := uint64(targetKey.CommonPrefixLength(serverKey))
+	//targetKey := kadt.PeerID(keyBytes).Key()
+	//serverKey := kadt.PeerID(queryingPeer).Key()
+	//cpl := uint64(targetKey.CommonPrefixLength(serverKey))
+	cpl := 1
 
 	// TODO: make log2_num_rows to be 8 once the DB is fully created
 	//  or even better, set it internally based on the size of the normalized RT struct
 	chosenPirProtocol := pir.NewSimpleRLWE_PIR_Protocol(4)
 	pirRequest, err := chosenPirProtocol.GenerateRequestFromQuery(int(cpl))
 	if err != nil {
+		fmt.Printf("%s", err)
 		return
 	}
 
@@ -1521,22 +1519,33 @@ func TestDHT_handlePrivateFindPeer(t *testing.T) {
 		CloserPeersRequest: pirRequest,
 	}
 
-	resp, err := d.handlePrivateFindPeer(context.Background(), peers[0], msg)
+	ctResp, err := d.handlePrivateFindPeer(context.Background(), peers[0], msg)
 	require.NoError(t, err)
 
-	assert.Equal(t, pb.Message_PRIVATE_FIND_NODE, resp.Type)
-	assert.Equal(t, resp.PIR_Message_ID, msg.PIR_Message_ID)
+	assert.Equal(t, pb.Message_PRIVATE_FIND_NODE, ctResp.Type)
+	assert.Equal(t, ctResp.PIR_Message_ID, msg.PIR_Message_ID)
 
-	_, err = chosenPirProtocol.ProcessResponseToPlaintext(resp.CloserPeersResponse)
+	plaintext, err := chosenPirProtocol.ProcessResponseToPlaintext(ctResp.CloserPeersResponse)
 	require.NoError(t, err)
 
-	// TODO: Process the response in resp.CloserPeers into plaintext form
+	println("Plaintext bucket")
+	for _, b := range plaintext {
+		print(b, ",")
+	}
+
+	resp, err := transformPlaintextRoutingEntriesToPB(plaintext)
+	if err != nil {
+		fmt.Printf("error unmarshalling %s", err)
+		return
+	}
+
+	// TODO: Process the response in ctResp.CloserPeers into plaintext form
 	//  check that at least d.cfg.BucketSize peers are returned
-	//assert.Nil(t, resp.Record)
-	//assert.Len(t, resp.CloserPeers, d.cfg.BucketSize)
-	//assert.Len(t, resp.ProviderPeers, 0)
-	//assert.Equal(t, len(resp.CloserPeers[0].Addrs), 1)
-	//printCloserPeers(resp)
+	assert.Nil(t, resp.Record)
+	assert.Len(t, resp.CloserPeers, d.cfg.BucketSize)
+	assert.Len(t, resp.ProviderPeers, 0)
+	assert.Equal(t, len(resp.CloserPeers[0].Addrs), 1)
+	printCloserPeers(resp)
 
 }
 
