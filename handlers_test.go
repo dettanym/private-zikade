@@ -1486,10 +1486,16 @@ func TestDHT_normalizeRTJoinedWithPeerStore(t *testing.T) {
 
 }
 
+type results struct {
+	requestLen    int
+	responseLen   int
+	serverRuntime int
+}
+
 func TestDHT_handlePrivateFindPeer(t *testing.T) {
 	d := newTestDHT(t)
 
-	queryingPeer := newPeerID(t)
+	serverPeer := newPeerID(t)
 
 	peers := fillRoutingTable(t, d, 250)
 
@@ -1500,7 +1506,7 @@ func TestDHT_handlePrivateFindPeer(t *testing.T) {
 	keyBytes := []byte("key")
 
 	targetKey := kadt.PeerID(keyBytes).Key()
-	serverKey := kadt.PeerID(queryingPeer).Key()
+	serverKey := kadt.PeerID(serverPeer).Key()
 	cpl := uint64(targetKey.CommonPrefixLength(serverKey))
 	println("CPL between server and target: ", cpl, "\n")
 
@@ -1654,4 +1660,57 @@ func TestDHT_handlePrivateGetProviders(t *testing.T) {
 	//   from the variable above. Then check that there exists the same number of providers
 	//    for the given CID, in the response as in the normal handleGetProviders case.
 	//     (There may be more providers, but for other CIDs.)
+}
+
+func BenchmarkDHT_PrivateFindPeer(b *testing.B) {
+	d := newTestDHT(b)
+
+	// build routing table
+	peers := fillRoutingTable(b, d, 250)
+
+	serverPeer := newPeerID(b)
+	serverKey := kadt.PeerID(serverPeer).Key()
+
+	ourResults := make([]results, b.N)
+
+	// build requests
+	reqs := make([]*pb.Message, b.N)
+	for i := 0; i < b.N; i++ {
+		keyBytes := []byte("random-key-" + strconv.Itoa(i))
+
+		targetKey := kadt.PeerID(keyBytes).Key()
+		reqs[i], ourResults[i].requestLen = genPrivateRequest(b, targetKey, serverKey)
+	}
+
+	ctx := context.Background()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		resp, err := d.handlePrivateFindPeer(ctx, peers[0], reqs[i])
+		ourResults[i].responseLen = len(resp.CloserPeersResponse.GetCiphertexts())
+		require.NoError(b, err)
+	}
+}
+
+func genPrivateRequest(b *testing.B, targetKey kadt.Key, serverKey kadt.Key) (*pb.Message, int) {
+	cpl := uint64(targetKey.CommonPrefixLength(serverKey))
+	println("CPL between server and target: ", cpl, "\n")
+
+	// TODO: make log2_num_rows to be 8 once the DB is fully created
+	//  or even better, set it internally based on the size of the normalized RT struct
+	chosenPirProtocol := pir.NewSimpleRLWE_PIR_Protocol(8)
+	pirRequest, err := chosenPirProtocol.GenerateRequestFromQuery(int(cpl))
+	require.NoError(b, err)
+
+	pirRequestLen := len(pirRequest.GetEncryptedQuery()) + len(pirRequest.GetParameters()) + len(pirRequest.GetRLWEEvaluationKeys())
+	print(pirRequestLen)
+
+	msg := &pb.Message{
+		Type:               pb.Message_PRIVATE_FIND_NODE,
+		PIR_Message_ID:     1234,
+		CloserPeersRequest: pirRequest,
+	}
+
+	return msg, pirRequestLen
 }
