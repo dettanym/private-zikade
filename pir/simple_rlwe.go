@@ -171,6 +171,11 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) GenerateRequestFromQuery(requested_ro
 		plaintexts[i] = query_plaintext
 	}
 
+	err = rlweStruct.createPrivateKeyMaterial()
+	if err != nil {
+		return nil, err
+	}
+
 	ciphertext, err := rlweStruct.encryptRLWEPlaintexts(plaintexts)
 	if err != nil {
 		return nil, err
