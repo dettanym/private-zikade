@@ -1489,7 +1489,7 @@ func TestDHT_normalizeRTJoinedWithPeerStore(t *testing.T) {
 func TestDHT_handlePrivateFindPeer(t *testing.T) {
 	d := newTestDHT(t)
 
-	// queryingPeer := newPeerID(t)
+	queryingPeer := newPeerID(t)
 
 	peers := fillRoutingTable(t, d, 250)
 
@@ -1497,12 +1497,12 @@ func TestDHT_handlePrivateFindPeer(t *testing.T) {
 	printCPLAndBucketSizes(d, peers)
 
 	// First generate PIR request
-	// keyBytes := []byte("key")
+	keyBytes := []byte("key")
 
-	//targetKey := kadt.PeerID(keyBytes).Key()
-	//serverKey := kadt.PeerID(queryingPeer).Key()
-	//cpl := uint64(targetKey.CommonPrefixLength(serverKey))
-	cpl := 1
+	targetKey := kadt.PeerID(keyBytes).Key()
+	serverKey := kadt.PeerID(queryingPeer).Key()
+	cpl := uint64(targetKey.CommonPrefixLength(serverKey))
+	println("CPL between server and target: ", cpl, "\n")
 
 	// TODO: make log2_num_rows to be 8 once the DB is fully created
 	//  or even better, set it internally based on the size of the normalized RT struct
@@ -1539,8 +1539,6 @@ func TestDHT_handlePrivateFindPeer(t *testing.T) {
 		return
 	}
 
-	// TODO: Process the response in ctResp.CloserPeers into plaintext form
-	//  check that at least d.cfg.BucketSize peers are returned
 	assert.Nil(t, resp.Record)
 	assert.Len(t, resp.CloserPeers, d.cfg.BucketSize)
 	assert.Len(t, resp.ProviderPeers, 0)
