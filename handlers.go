@@ -3,6 +3,7 @@ package zikade
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 
@@ -419,8 +420,44 @@ func (d *DHT) NormalizeRTJoinedWithPeerStore(queryingPeerKadId kadt.Key) ([][]by
 		if err != nil {
 			return nil, fmt.Errorf("Could not marshal peers in RT. Err: %s ", err)
 		}
-		bucketsWithAddrInfos[bid] = marshalledRoutingEntries
+		// TODO Add similar code around the proto.Marshal call in backend_providers.go
+		buf := new(bytes.Buffer)
+		var lenMarshalledRTEntries = uint64(len(marshalledRoutingEntries))
+		err = binary.Write(buf, binary.LittleEndian, lenMarshalledRTEntries)
+		if err != nil {
+			return nil, fmt.Errorf("couldn't convert the length of the RT entries to a byte array %s", err)
+		}
+		// fmt.Printf("Bucket %d has %d bytes, expressed in bytes: %x\n", bid, lenMarshalledRTEntries, buf.Bytes())
+		bucketsWithAddrInfos[bid] = append(buf.Bytes(), marshalledRoutingEntries...)
 	}
 
+	//for i, bucketBytes := range bucketsWithAddrInfos {
+	//	println("\nBucket index", i)
+	//	for _, b := range bucketBytes {
+	//		print(b, ",")
+	//	}
+	//}
 	return bucketsWithAddrInfos, nil
+}
+
+func transformPlaintextRoutingEntriesToPB(paddedMarshalledBucket []byte) (*pb.Message, error) {
+	buf := bytes.NewReader(paddedMarshalledBucket[0:8])
+	var lenMarshalledRTEntries uint64
+	err := binary.Read(buf, binary.LittleEndian, &lenMarshalledRTEntries)
+	if err != nil {
+		fmt.Printf("couldn't read the length of the RT entries to a byte array %s", err)
+		return nil, err
+	}
+	fmt.Printf("marshalled bucket length %d\n", lenMarshalledRTEntries)
+
+	marshalledBucket := paddedMarshalledBucket[8 : 8+lenMarshalledRTEntries]
+
+	resp := &pb.Message{
+		CloserPeers: nil,
+	}
+	err = proto.Unmarshal(marshalledBucket, resp)
+	if err != nil {
+		return nil, fmt.Errorf("Could not marshal peers in RT. Err: %s ", err)
+	}
+	return resp, nil
 }
