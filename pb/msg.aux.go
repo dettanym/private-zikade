@@ -119,6 +119,9 @@ func (m *Message) CloserNodes() []kadt.PeerID {
 	return ids
 }
 
+// TODO: This needs to be changed to handle the new protobuf format
+//
+//	for private peer, provider records
 func (m *Message) Size() (n int) {
 	if m == nil {
 		return 0
