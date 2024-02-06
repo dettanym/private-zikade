@@ -309,6 +309,8 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 		for j := num_db_rows; j < num_rows; j++ {
 			evaluator.Add(indicator_bits[num_db_rows-1], indicator_bits[j], indicator_bits[num_db_rows-1])
 		}
+	} else if num_rows < num_db_rows {
+		return nil, fmt.Errorf("initialize this struct with log2_num_rows as greater than or equal to the log of the number of rows in the DB")
 	}
 
 	// WARNING: Inner loop is not parallelizable

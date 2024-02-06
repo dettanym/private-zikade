@@ -1509,7 +1509,7 @@ func TestDHT_handlePrivateFindPeer(t *testing.T) {
 
 	// TODO: make log2_num_rows to be 8 once the DB is fully created
 	//  or even better, set it internally based on the size of the normalized RT struct
-	chosenPirProtocol := pir.NewSimpleRLWE_PIR_Protocol(2)
+	chosenPirProtocol := pir.NewSimpleRLWE_PIR_Protocol(4)
 	pirRequest, err := chosenPirProtocol.GenerateRequestFromQuery(int(cpl))
 	if err != nil {
 		return
