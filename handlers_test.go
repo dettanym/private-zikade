@@ -53,47 +53,48 @@ func BenchmarkDHT_handleFindPeer(b *testing.B) {
 	d := newTestDHT(b)
 
 	// build routing table
-	var peers []peer.ID
-	for i := 0; i < 250; i++ {
+	peers := fillRoutingTable(b, d, 250)
 
-		// generate peer ID
-		pid := newPeerID(b)
-
-		// add peer to routing table
-		d.rt.AddNode(kadt.PeerID(pid))
-
-		// keep track of peer
-		peers = append(peers, pid)
-
-		// craft network address for peer
-		a, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", 2000+i))
-		if err != nil {
-			b.Fatal(err)
-		}
-
-		// add peer information to peer store
-		d.host.Peerstore().AddAddr(pid, a, time.Hour)
-	}
+	runs := 100
+	ourResults := make([]results, runs)
 
 	// build requests
-	reqs := make([]*pb.Message, b.N)
-	for i := 0; i < b.N; i++ {
+	reqs := make([]*pb.Message, runs)
+	for i := 0; i < runs; i++ {
 		reqs[i] = &pb.Message{
 			Type: pb.Message_FIND_NODE,
 			Key:  []byte("random-key-" + strconv.Itoa(i)),
 		}
+		ourResults[i].requestLen = reqs[i].Size()
 	}
 
 	ctx := context.Background()
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, err := d.handleFindPeer(ctx, peers[0], reqs[i])
-		if err != nil {
-			b.Error(err)
-		}
+	for i := 0; i < runs; i++ {
+		start := time.Now()
+		resp, err := d.handleFindPeer(ctx, peers[0], reqs[i])
+		ourResults[i].responseLen = resp.Size()
+		require.NoError(b, err)
+		elapsed := time.Since(start)
+		ourResults[i].serverRuntime = elapsed.Microseconds()
 	}
+
+	var avgReqLen float64
+	var avgResLen float64
+	var avgServerTime float64
+	for _, res := range ourResults {
+		// print("\n ", i, " ", res.requestLen, " ", res.responseLen, " ", res.serverRuntime, "\n")
+		avgReqLen += float64(res.requestLen)
+		avgResLen += float64(res.responseLen)
+		avgServerTime += float64(res.serverRuntime)
+	}
+	avgReqLen = avgReqLen / float64(runs)
+	avgResLen = avgResLen / float64(runs)
+	avgServerTime = float64(int64(int(avgServerTime) / runs))
+	print(avgReqLen, " ", avgResLen, " ", avgServerTime, "\n")
+
 }
 
 func TestDHT_handleFindPeer_happy_path(t *testing.T) {
