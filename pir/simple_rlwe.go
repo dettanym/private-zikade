@@ -3,14 +3,13 @@ package pir
 import (
 	"encoding/binary"
 	"fmt"
-	"log"
-	"math"
-	"time"
-
 	"github.com/plprobelab/zikade/pb"
 	"github.com/tuneinsight/lattigo/v5/core/rlwe"
 	"github.com/tuneinsight/lattigo/v5/schemes/bgv"
 	"github.com/tuneinsight/lattigo/v5/utils/structs"
+	"log"
+	"math"
+	"time"
 )
 
 type SimpleRLWE_PIR_Protocol struct {
