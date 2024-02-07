@@ -1489,7 +1489,7 @@ func TestDHT_normalizeRTJoinedWithPeerStore(t *testing.T) {
 type results struct {
 	requestLen    int
 	responseLen   int
-	serverRuntime int
+	serverRuntime int64
 }
 
 func TestDHT_handlePrivateFindPeer(t *testing.T) {
@@ -1671,11 +1671,12 @@ func BenchmarkDHT_PrivateFindPeer(b *testing.B) {
 	serverPeer := newPeerID(b)
 	serverKey := kadt.PeerID(serverPeer).Key()
 
-	ourResults := make([]results, b.N)
+	runs := 100
+	ourResults := make([]results, runs)
 
 	// build requests
-	reqs := make([]*pb.Message, b.N)
-	for i := 0; i < b.N; i++ {
+	reqs := make([]*pb.Message, runs)
+	for i := 0; i < runs; i++ {
 		keyBytes := []byte("random-key-" + strconv.Itoa(i))
 
 		targetKey := kadt.PeerID(keyBytes).Key()
@@ -1686,16 +1687,35 @@ func BenchmarkDHT_PrivateFindPeer(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for i := 0; i < runs; i++ {
+		start := time.Now()
 		resp, err := d.handlePrivateFindPeer(ctx, peers[0], reqs[i])
 		ourResults[i].responseLen = len(resp.CloserPeersResponse.GetCiphertexts())
 		require.NoError(b, err)
+		elapsed := time.Since(start)
+		ourResults[i].serverRuntime = elapsed.Milliseconds()
 	}
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	var avgReqLen float64
+	var avgResLen float64
+	var avgServerTime float64
+	for _, res := range ourResults {
+		// print("\n ", i, " ", res.requestLen, " ", res.responseLen, " ", res.serverRuntime, "\n")
+		avgReqLen += float64(res.requestLen)
+		avgResLen += float64(res.responseLen)
+		avgServerTime += float64(res.serverRuntime)
+	}
+	avgReqLen = avgReqLen / float64(runs)
+	avgResLen = avgResLen / float64(runs)
+	avgServerTime = float64(int64(int(avgServerTime) / runs))
+	print(avgReqLen, " ", avgResLen, " ", avgServerTime)
 }
 
 func genPrivateRequest(b *testing.B, targetKey kadt.Key, serverKey kadt.Key) (*pb.Message, int) {
 	cpl := uint64(targetKey.CommonPrefixLength(serverKey))
-	println("CPL between server and target: ", cpl, "\n")
+	// println("CPL between server and target: ", cpl, "\n")
 
 	// TODO: make log2_num_rows to be 8 once the DB is fully created
 	//  or even better, set it internally based on the size of the normalized RT struct
@@ -1704,7 +1724,7 @@ func genPrivateRequest(b *testing.B, targetKey kadt.Key, serverKey kadt.Key) (*p
 	require.NoError(b, err)
 
 	pirRequestLen := len(pirRequest.GetEncryptedQuery()) + len(pirRequest.GetParameters()) + len(pirRequest.GetRLWEEvaluationKeys())
-	print(pirRequestLen)
+	// print(pirRequestLen)
 
 	msg := &pb.Message{
 		Type:               pb.Message_PRIVATE_FIND_NODE,
