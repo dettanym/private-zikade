@@ -15,10 +15,15 @@ import (
 // From https://github.com/tuneinsight/lattigo/blob/master/schemes/bgv/examples_parameters.go
 func (rlweStruct *SimpleRLWE_PIR_Protocol) generateParameters() error { //
 	HEIntParamsN12QP109 := heint.ParametersLiteral{
-		LogN:             12,
-		LogQ:             []int{39, 31},
-		LogP:             []int{39},
-		PlaintextModulus: 0x10001,
+		LogN: 12,
+		LogQ: []int{54},
+		LogP: []int{55},
+		// P:    []uint64{562949953216513},
+		// Q:    []uint64{1152921504606830593},
+		// PlaintextModulus: 16760833,
+		// PlaintextModulus: 0x106001, //1073153,
+		PlaintextModulus: 270337,
+		// PlaintextModulus: 0x1001,
 	}
 
 	params, err := heint.NewParametersFromLiteral(HEIntParamsN12QP109)
