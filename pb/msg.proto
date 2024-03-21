@@ -94,11 +94,21 @@ message PIR_Request {
     bytes parameters = 2;
     oneof SchemeDependent {
       bytes RLWE_evaluation_keys = 10;
+			Paillier_Public_Key Paillier_Public_Key = 11;
       bytes other_keys = 21;
     }
     bytes encrypted_query = 3;
+		repeated bytes encrypted_paillier_query = 4;
+
 }
 
 message PIR_Response {
   bytes ciphertexts = 1;
+	repeated bytes encrypted_paillier_response = 2;
+}
+
+message Paillier_Public_Key {
+	bytes n = 1;
+	bytes g = 2;
+	int64 length = 3;
 }

@@ -308,9 +308,11 @@ type PIR_Request struct {
 	// Types that are assignable to SchemeDependent:
 	//
 	//	*PIR_Request_RLWEEvaluationKeys
+	//	*PIR_Request_Paillier_Public_Key
 	//	*PIR_Request_OtherKeys
-	SchemeDependent isPIR_Request_SchemeDependent `protobuf_oneof:"SchemeDependent"`
-	EncryptedQuery  []byte                        `protobuf:"bytes,3,opt,name=encrypted_query,json=encryptedQuery,proto3" json:"encrypted_query,omitempty"`
+	SchemeDependent        isPIR_Request_SchemeDependent `protobuf_oneof:"SchemeDependent"`
+	EncryptedQuery         []byte                        `protobuf:"bytes,3,opt,name=encrypted_query,json=encryptedQuery,proto3" json:"encrypted_query,omitempty"`
+	EncryptedPaillierQuery [][]byte                      `protobuf:"bytes,4,rep,name=encrypted_paillier_query,json=encryptedPaillierQuery,proto3" json:"encrypted_paillier_query,omitempty"`
 }
 
 func (x *PIR_Request) Reset() {
@@ -373,6 +375,13 @@ func (x *PIR_Request) GetRLWEEvaluationKeys() []byte {
 	return nil
 }
 
+func (x *PIR_Request) GetPaillier_Public_Key() *Paillier_Public_Key {
+	if x, ok := x.GetSchemeDependent().(*PIR_Request_Paillier_Public_Key); ok {
+		return x.Paillier_Public_Key
+	}
+	return nil
+}
+
 func (x *PIR_Request) GetOtherKeys() []byte {
 	if x, ok := x.GetSchemeDependent().(*PIR_Request_OtherKeys); ok {
 		return x.OtherKeys
@@ -387,6 +396,13 @@ func (x *PIR_Request) GetEncryptedQuery() []byte {
 	return nil
 }
 
+func (x *PIR_Request) GetEncryptedPaillierQuery() [][]byte {
+	if x != nil {
+		return x.EncryptedPaillierQuery
+	}
+	return nil
+}
+
 type isPIR_Request_SchemeDependent interface {
 	isPIR_Request_SchemeDependent()
 }
@@ -395,11 +411,17 @@ type PIR_Request_RLWEEvaluationKeys struct {
 	RLWEEvaluationKeys []byte `protobuf:"bytes,10,opt,name=RLWE_evaluation_keys,json=RLWEEvaluationKeys,proto3,oneof"`
 }
 
+type PIR_Request_Paillier_Public_Key struct {
+	Paillier_Public_Key *Paillier_Public_Key `protobuf:"bytes,11,opt,name=Paillier_Public_Key,json=PaillierPublicKey,proto3,oneof"`
+}
+
 type PIR_Request_OtherKeys struct {
 	OtherKeys []byte `protobuf:"bytes,21,opt,name=other_keys,json=otherKeys,proto3,oneof"`
 }
 
 func (*PIR_Request_RLWEEvaluationKeys) isPIR_Request_SchemeDependent() {}
+
+func (*PIR_Request_Paillier_Public_Key) isPIR_Request_SchemeDependent() {}
 
 func (*PIR_Request_OtherKeys) isPIR_Request_SchemeDependent() {}
 
@@ -408,7 +430,8 @@ type PIR_Response struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Ciphertexts []byte `protobuf:"bytes,1,opt,name=ciphertexts,proto3" json:"ciphertexts,omitempty"`
+	Ciphertexts               []byte   `protobuf:"bytes,1,opt,name=ciphertexts,proto3" json:"ciphertexts,omitempty"`
+	EncryptedPaillierResponse [][]byte `protobuf:"bytes,2,rep,name=encrypted_paillier_response,json=encryptedPaillierResponse,proto3" json:"encrypted_paillier_response,omitempty"`
 }
 
 func (x *PIR_Response) Reset() {
@@ -450,6 +473,76 @@ func (x *PIR_Response) GetCiphertexts() []byte {
 	return nil
 }
 
+func (x *PIR_Response) GetEncryptedPaillierResponse() [][]byte {
+	if x != nil {
+		return x.EncryptedPaillierResponse
+	}
+	return nil
+}
+
+type Paillier_Public_Key struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	N      []byte `protobuf:"bytes,1,opt,name=n,proto3" json:"n,omitempty"`
+	G      []byte `protobuf:"bytes,2,opt,name=g,proto3" json:"g,omitempty"`
+	Length int64  `protobuf:"varint,3,opt,name=length,proto3" json:"length,omitempty"`
+}
+
+func (x *Paillier_Public_Key) Reset() {
+	*x = Paillier_Public_Key{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_msg_proto_msgTypes[3]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Paillier_Public_Key) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Paillier_Public_Key) ProtoMessage() {}
+
+func (x *Paillier_Public_Key) ProtoReflect() protoreflect.Message {
+	mi := &file_msg_proto_msgTypes[3]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Paillier_Public_Key.ProtoReflect.Descriptor instead.
+func (*Paillier_Public_Key) Descriptor() ([]byte, []int) {
+	return file_msg_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *Paillier_Public_Key) GetN() []byte {
+	if x != nil {
+		return x.N
+	}
+	return nil
+}
+
+func (x *Paillier_Public_Key) GetG() []byte {
+	if x != nil {
+		return x.G
+	}
+	return nil
+}
+
+func (x *Paillier_Public_Key) GetLength() int64 {
+	if x != nil {
+		return x.Length
+	}
+	return 0
+}
+
 type Message_Peer struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -466,7 +559,7 @@ type Message_Peer struct {
 func (x *Message_Peer) Reset() {
 	*x = Message_Peer{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_msg_proto_msgTypes[3]
+		mi := &file_msg_proto_msgTypes[4]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -479,7 +572,7 @@ func (x *Message_Peer) String() string {
 func (*Message_Peer) ProtoMessage() {}
 
 func (x *Message_Peer) ProtoReflect() protoreflect.Message {
-	mi := &file_msg_proto_msgTypes[3]
+	mi := &file_msg_proto_msgTypes[4]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -528,7 +621,7 @@ type Message_CIDToProviderMap struct {
 func (x *Message_CIDToProviderMap) Reset() {
 	*x = Message_CIDToProviderMap{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_msg_proto_msgTypes[4]
+		mi := &file_msg_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -541,7 +634,7 @@ func (x *Message_CIDToProviderMap) String() string {
 func (*Message_CIDToProviderMap) ProtoMessage() {}
 
 func (x *Message_CIDToProviderMap) ProtoReflect() protoreflect.Message {
-	mi := &file_msg_proto_msgTypes[4]
+	mi := &file_msg_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -649,7 +742,7 @@ var file_msg_proto_rawDesc = []byte{
 	0x45, 0x43, 0x54, 0x45, 0x44, 0x10, 0x00, 0x12, 0x0d, 0x0a, 0x09, 0x43, 0x4f, 0x4e, 0x4e, 0x45,
 	0x43, 0x54, 0x45, 0x44, 0x10, 0x01, 0x12, 0x0f, 0x0a, 0x0b, 0x43, 0x41, 0x4e, 0x5f, 0x43, 0x4f,
 	0x4e, 0x4e, 0x45, 0x43, 0x54, 0x10, 0x02, 0x12, 0x12, 0x0a, 0x0e, 0x43, 0x41, 0x4e, 0x4e, 0x4f,
-	0x54, 0x5f, 0x43, 0x4f, 0x4e, 0x4e, 0x45, 0x43, 0x54, 0x10, 0x03, 0x22, 0xe2, 0x01, 0x0a, 0x0b,
+	0x54, 0x5f, 0x43, 0x4f, 0x4e, 0x4e, 0x45, 0x43, 0x54, 0x10, 0x03, 0x22, 0xeb, 0x02, 0x0a, 0x0b,
 	0x50, 0x49, 0x52, 0x5f, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x22, 0x0a, 0x0d, 0x6c,
 	0x6f, 0x67, 0x32, 0x5f, 0x6e, 0x75, 0x6d, 0x5f, 0x72, 0x6f, 0x77, 0x73, 0x18, 0x01, 0x20, 0x01,
 	0x28, 0x03, 0x52, 0x0b, 0x6c, 0x6f, 0x67, 0x32, 0x4e, 0x75, 0x6d, 0x52, 0x6f, 0x77, 0x73, 0x12,
@@ -658,17 +751,34 @@ var file_msg_proto_rawDesc = []byte{
 	0x32, 0x0a, 0x14, 0x52, 0x4c, 0x57, 0x45, 0x5f, 0x65, 0x76, 0x61, 0x6c, 0x75, 0x61, 0x74, 0x69,
 	0x6f, 0x6e, 0x5f, 0x6b, 0x65, 0x79, 0x73, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x0c, 0x48, 0x00, 0x52,
 	0x12, 0x52, 0x4c, 0x57, 0x45, 0x45, 0x76, 0x61, 0x6c, 0x75, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x4b,
-	0x65, 0x79, 0x73, 0x12, 0x1f, 0x0a, 0x0a, 0x6f, 0x74, 0x68, 0x65, 0x72, 0x5f, 0x6b, 0x65, 0x79,
-	0x73, 0x18, 0x15, 0x20, 0x01, 0x28, 0x0c, 0x48, 0x00, 0x52, 0x09, 0x6f, 0x74, 0x68, 0x65, 0x72,
-	0x4b, 0x65, 0x79, 0x73, 0x12, 0x27, 0x0a, 0x0f, 0x65, 0x6e, 0x63, 0x72, 0x79, 0x70, 0x74, 0x65,
-	0x64, 0x5f, 0x71, 0x75, 0x65, 0x72, 0x79, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x0e, 0x65,
-	0x6e, 0x63, 0x72, 0x79, 0x70, 0x74, 0x65, 0x64, 0x51, 0x75, 0x65, 0x72, 0x79, 0x42, 0x11, 0x0a,
-	0x0f, 0x53, 0x63, 0x68, 0x65, 0x6d, 0x65, 0x44, 0x65, 0x70, 0x65, 0x6e, 0x64, 0x65, 0x6e, 0x74,
-	0x22, 0x30, 0x0a, 0x0c, 0x50, 0x49, 0x52, 0x5f, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
-	0x12, 0x20, 0x0a, 0x0b, 0x63, 0x69, 0x70, 0x68, 0x65, 0x72, 0x74, 0x65, 0x78, 0x74, 0x73, 0x18,
-	0x01, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x0b, 0x63, 0x69, 0x70, 0x68, 0x65, 0x72, 0x74, 0x65, 0x78,
-	0x74, 0x73, 0x42, 0x07, 0x5a, 0x05, 0x2e, 0x2f, 0x3b, 0x70, 0x62, 0x62, 0x06, 0x70, 0x72, 0x6f,
-	0x74, 0x6f, 0x33,
+	0x65, 0x79, 0x73, 0x12, 0x4d, 0x0a, 0x13, 0x50, 0x61, 0x69, 0x6c, 0x6c, 0x69, 0x65, 0x72, 0x5f,
+	0x50, 0x75, 0x62, 0x6c, 0x69, 0x63, 0x5f, 0x4b, 0x65, 0x79, 0x18, 0x0b, 0x20, 0x01, 0x28, 0x0b,
+	0x32, 0x1b, 0x2e, 0x64, 0x68, 0x74, 0x2e, 0x70, 0x62, 0x2e, 0x50, 0x61, 0x69, 0x6c, 0x6c, 0x69,
+	0x65, 0x72, 0x5f, 0x50, 0x75, 0x62, 0x6c, 0x69, 0x63, 0x5f, 0x4b, 0x65, 0x79, 0x48, 0x00, 0x52,
+	0x11, 0x50, 0x61, 0x69, 0x6c, 0x6c, 0x69, 0x65, 0x72, 0x50, 0x75, 0x62, 0x6c, 0x69, 0x63, 0x4b,
+	0x65, 0x79, 0x12, 0x1f, 0x0a, 0x0a, 0x6f, 0x74, 0x68, 0x65, 0x72, 0x5f, 0x6b, 0x65, 0x79, 0x73,
+	0x18, 0x15, 0x20, 0x01, 0x28, 0x0c, 0x48, 0x00, 0x52, 0x09, 0x6f, 0x74, 0x68, 0x65, 0x72, 0x4b,
+	0x65, 0x79, 0x73, 0x12, 0x27, 0x0a, 0x0f, 0x65, 0x6e, 0x63, 0x72, 0x79, 0x70, 0x74, 0x65, 0x64,
+	0x5f, 0x71, 0x75, 0x65, 0x72, 0x79, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x0e, 0x65, 0x6e,
+	0x63, 0x72, 0x79, 0x70, 0x74, 0x65, 0x64, 0x51, 0x75, 0x65, 0x72, 0x79, 0x12, 0x38, 0x0a, 0x18,
+	0x65, 0x6e, 0x63, 0x72, 0x79, 0x70, 0x74, 0x65, 0x64, 0x5f, 0x70, 0x61, 0x69, 0x6c, 0x6c, 0x69,
+	0x65, 0x72, 0x5f, 0x71, 0x75, 0x65, 0x72, 0x79, 0x18, 0x04, 0x20, 0x03, 0x28, 0x0c, 0x52, 0x16,
+	0x65, 0x6e, 0x63, 0x72, 0x79, 0x70, 0x74, 0x65, 0x64, 0x50, 0x61, 0x69, 0x6c, 0x6c, 0x69, 0x65,
+	0x72, 0x51, 0x75, 0x65, 0x72, 0x79, 0x42, 0x11, 0x0a, 0x0f, 0x53, 0x63, 0x68, 0x65, 0x6d, 0x65,
+	0x44, 0x65, 0x70, 0x65, 0x6e, 0x64, 0x65, 0x6e, 0x74, 0x22, 0x70, 0x0a, 0x0c, 0x50, 0x49, 0x52,
+	0x5f, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x20, 0x0a, 0x0b, 0x63, 0x69, 0x70,
+	0x68, 0x65, 0x72, 0x74, 0x65, 0x78, 0x74, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x0b,
+	0x63, 0x69, 0x70, 0x68, 0x65, 0x72, 0x74, 0x65, 0x78, 0x74, 0x73, 0x12, 0x3e, 0x0a, 0x1b, 0x65,
+	0x6e, 0x63, 0x72, 0x79, 0x70, 0x74, 0x65, 0x64, 0x5f, 0x70, 0x61, 0x69, 0x6c, 0x6c, 0x69, 0x65,
+	0x72, 0x5f, 0x72, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x18, 0x02, 0x20, 0x03, 0x28, 0x0c,
+	0x52, 0x19, 0x65, 0x6e, 0x63, 0x72, 0x79, 0x70, 0x74, 0x65, 0x64, 0x50, 0x61, 0x69, 0x6c, 0x6c,
+	0x69, 0x65, 0x72, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x49, 0x0a, 0x13, 0x50,
+	0x61, 0x69, 0x6c, 0x6c, 0x69, 0x65, 0x72, 0x5f, 0x50, 0x75, 0x62, 0x6c, 0x69, 0x63, 0x5f, 0x4b,
+	0x65, 0x79, 0x12, 0x0c, 0x0a, 0x01, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x01, 0x6e,
+	0x12, 0x0c, 0x0a, 0x01, 0x67, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x01, 0x67, 0x12, 0x16,
+	0x0a, 0x06, 0x6c, 0x65, 0x6e, 0x67, 0x74, 0x68, 0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x52, 0x06,
+	0x6c, 0x65, 0x6e, 0x67, 0x74, 0x68, 0x42, 0x07, 0x5a, 0x05, 0x2e, 0x2f, 0x3b, 0x70, 0x62, 0x62,
+	0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -684,34 +794,36 @@ func file_msg_proto_rawDescGZIP() []byte {
 }
 
 var file_msg_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_msg_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_msg_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_msg_proto_goTypes = []interface{}{
 	(Message_MessageType)(0),         // 0: dht.pb.Message.MessageType
 	(Message_ConnectionType)(0),      // 1: dht.pb.Message.ConnectionType
 	(*Message)(nil),                  // 2: dht.pb.Message
 	(*PIR_Request)(nil),              // 3: dht.pb.PIR_Request
 	(*PIR_Response)(nil),             // 4: dht.pb.PIR_Response
-	(*Message_Peer)(nil),             // 5: dht.pb.Message.Peer
-	(*Message_CIDToProviderMap)(nil), // 6: dht.pb.Message.CIDToProviderMap
-	(*pb.Record)(nil),                // 7: record.pb.Record
+	(*Paillier_Public_Key)(nil),      // 5: dht.pb.Paillier_Public_Key
+	(*Message_Peer)(nil),             // 6: dht.pb.Message.Peer
+	(*Message_CIDToProviderMap)(nil), // 7: dht.pb.Message.CIDToProviderMap
+	(*pb.Record)(nil),                // 8: record.pb.Record
 }
 var file_msg_proto_depIdxs = []int32{
-	6,  // 0: dht.pb.Message.buckets:type_name -> dht.pb.Message.CIDToProviderMap
+	7,  // 0: dht.pb.Message.buckets:type_name -> dht.pb.Message.CIDToProviderMap
 	0,  // 1: dht.pb.Message.type:type_name -> dht.pb.Message.MessageType
-	7,  // 2: dht.pb.Message.record:type_name -> record.pb.Record
-	5,  // 3: dht.pb.Message.closer_peers:type_name -> dht.pb.Message.Peer
-	5,  // 4: dht.pb.Message.provider_peers:type_name -> dht.pb.Message.Peer
+	8,  // 2: dht.pb.Message.record:type_name -> record.pb.Record
+	6,  // 3: dht.pb.Message.closer_peers:type_name -> dht.pb.Message.Peer
+	6,  // 4: dht.pb.Message.provider_peers:type_name -> dht.pb.Message.Peer
 	3,  // 5: dht.pb.Message.closer_peers_request:type_name -> dht.pb.PIR_Request
 	3,  // 6: dht.pb.Message.provider_peers_request:type_name -> dht.pb.PIR_Request
 	4,  // 7: dht.pb.Message.closer_peers_response:type_name -> dht.pb.PIR_Response
 	4,  // 8: dht.pb.Message.provider_peers_response:type_name -> dht.pb.PIR_Response
-	1,  // 9: dht.pb.Message.Peer.connection:type_name -> dht.pb.Message.ConnectionType
-	5,  // 10: dht.pb.Message.CIDToProviderMap.provider_peers:type_name -> dht.pb.Message.Peer
-	11, // [11:11] is the sub-list for method output_type
-	11, // [11:11] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	5,  // 9: dht.pb.PIR_Request.Paillier_Public_Key:type_name -> dht.pb.Paillier_Public_Key
+	1,  // 10: dht.pb.Message.Peer.connection:type_name -> dht.pb.Message.ConnectionType
+	6,  // 11: dht.pb.Message.CIDToProviderMap.provider_peers:type_name -> dht.pb.Message.Peer
+	12, // [12:12] is the sub-list for method output_type
+	12, // [12:12] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_msg_proto_init() }
@@ -757,7 +869,7 @@ func file_msg_proto_init() {
 			}
 		}
 		file_msg_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Message_Peer); i {
+			switch v := v.(*Paillier_Public_Key); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -769,6 +881,18 @@ func file_msg_proto_init() {
 			}
 		}
 		file_msg_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Message_Peer); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_msg_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Message_CIDToProviderMap); i {
 			case 0:
 				return &v.state
@@ -783,6 +907,7 @@ func file_msg_proto_init() {
 	}
 	file_msg_proto_msgTypes[1].OneofWrappers = []interface{}{
 		(*PIR_Request_RLWEEvaluationKeys)(nil),
+		(*PIR_Request_Paillier_Public_Key)(nil),
 		(*PIR_Request_OtherKeys)(nil),
 	}
 	type x struct{}
@@ -791,7 +916,7 @@ func file_msg_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_msg_proto_rawDesc,
 			NumEnums:      2,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
