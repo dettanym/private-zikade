@@ -4,7 +4,7 @@
 // 	protoc        v3.20.3
 // source: msg.proto
 
-package dht
+package pb
 
 import (
 	pb "github.com/libp2p/go-libp2p-record/pb"
