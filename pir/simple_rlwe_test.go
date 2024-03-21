@@ -155,3 +155,56 @@ func TestPIR_ProcessRequestAndReturnResponse_Correctness_LessThan256Rows(t *test
 	}
 
 }
+
+func Benchmark_Key_Sizes(b *testing.B) {
+	log2_number_of_rows := 4
+	client_PIR_Protocol := NewSimpleRLWE_PIR_Protocol(log2_number_of_rows)
+	client_PIR_Protocol.generateParameters()
+	client_PIR_Protocol.createPrivateKeyMaterial()
+
+	query := 0
+	pirRequest, err := client_PIR_Protocol.GenerateRequestFromQuery(query)
+	require.NoError(b, err)
+
+	println("Evlauation Key Sizes:", len(pirRequest.GetRLWEEvaluationKeys()), "B")
+	println("Query Ciphertext Sizes", len(pirRequest.GetEncryptedQuery()), "B")
+
+	// server
+	num_db_rows := 16
+	db := make([][]byte, num_db_rows)
+	db_element_size := 10
+	response := &pb.PIR_Response{}
+	{
+		server_PIR_Protocol := NewSimpleRLWE_PIR_Protocol(log2_number_of_rows)
+
+		for i := range db {
+			db[i] = make([]byte, db_element_size)
+			for j := 0; j < db_element_size; j++ {
+				db[i][j] = 1
+			}
+		}
+
+		response, err = server_PIR_Protocol.ProcessRequestAndReturnResponse(pirRequest, db)
+		require.NoError(b, err)
+
+	} // end server
+
+	println("Response Ciphertext Sizes", len(response.Ciphertexts), "B")
+
+}
+
+func Benchmark_Possible_Eval_key_sizes(b *testing.B) {
+	for log2_number_of_rows := 0; log2_number_of_rows <= 12; log2_number_of_rows++ {
+		client_PIR_Protocol := NewSimpleRLWE_PIR_Protocol(log2_number_of_rows)
+		client_PIR_Protocol.generateParameters()
+		client_PIR_Protocol.createPrivateKeyMaterial()
+
+		query := 0
+		pirRequest, err := client_PIR_Protocol.GenerateRequestFromQuery(query)
+		require.NoError(b, err)
+
+		println("Evaluation Key Sizes (N=", log2_number_of_rows, ") :", len(pirRequest.GetRLWEEvaluationKeys()), "B")
+
+	}
+
+}

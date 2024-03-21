@@ -9,7 +9,7 @@ import (
 
 	"github.com/plprobelab/zikade/pb"
 	"github.com/tuneinsight/lattigo/v5/core/rlwe"
-	"github.com/tuneinsight/lattigo/v5/he/heint"
+	"github.com/tuneinsight/lattigo/v5/schemes/bgv"
 	"github.com/tuneinsight/lattigo/v5/utils/structs"
 )
 
@@ -18,7 +18,7 @@ type SimpleRLWE_PIR_Protocol struct {
 
 	log2_num_rows int
 
-	parameters heint.Parameters
+	parameters bgv.Parameters
 
 	secret_key *rlwe.SecretKey
 
@@ -102,7 +102,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) unmarshallRequestFromPB(req *pb.PIR_R
 	switch schemeDependent := req.SchemeDependent.(type) {
 	case *pb.PIR_Request_RLWEEvaluationKeys:
 		evaluationKeysBytes := schemeDependent.RLWEEvaluationKeys
-		println("OptionalParameters is set to EV Keys")
+		// println("OptionalParameters is set to EV Keys")
 		rlweStruct.evaluation_keys = &rlwe.MemEvaluationKeySet{}
 		err = rlweStruct.evaluation_keys.UnmarshalBinary(evaluationKeysBytes)
 		if err != nil {
@@ -144,10 +144,10 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) GenerateRequestFromQuery(requested_ro
 		return nil, err
 	}
 
-	encoder := heint.NewEncoder(rlweStruct.parameters)
+	encoder := bgv.NewEncoder(rlweStruct.parameters)
 	num_slots := rlweStruct.parameters.MaxSlots()
 	// TODO: Find the best value for this parameter
-	log_num_cts := 2
+	log_num_cts := 0
 	num_cts := 1 << log_num_cts
 	log2_bits_per_ct := rlweStruct.log2_num_rows - log_num_cts
 	bits_per_ct := 1 << log2_bits_per_ct
@@ -162,7 +162,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) GenerateRequestFromQuery(requested_ro
 		if i == ciphertext_index {
 			query_encoded[bit_index] = 1
 		}
-		query_plaintext := heint.NewPlaintext(rlweStruct.parameters, rlweStruct.parameters.MaxLevel())
+		query_plaintext := bgv.NewPlaintext(rlweStruct.parameters, rlweStruct.parameters.MaxLevel())
 		query_plaintext.IsBatched = false
 		err := encoder.Encode(query_encoded, query_plaintext)
 		if err != nil {
@@ -210,9 +210,9 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) BytesArrayToPlaintext(byte_array []by
 			panic("coeffs[j] > uint64(params.PlaintextModulus()), Coefficients are larger than the plaintext modulus")
 		}
 	}
-	row_data_plaintext := heint.NewPlaintext(rlweStruct.parameters, rlweStruct.parameters.MaxLevel())
+	row_data_plaintext := bgv.NewPlaintext(rlweStruct.parameters, rlweStruct.parameters.MaxLevel())
 	row_data_plaintext.IsBatched = false
-	encoder := heint.NewEncoder(rlweStruct.parameters)
+	encoder := bgv.NewEncoder(rlweStruct.parameters)
 	err := encoder.Encode(coeffs, row_data_plaintext)
 	if err != nil {
 		return nil, fmt.Errorf("could not encode a row of plaintext data %s", err)
@@ -221,7 +221,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) BytesArrayToPlaintext(byte_array []by
 }
 
 func (rlweStruct *SimpleRLWE_PIR_Protocol) PlaintextToBytesArray(plaintext *rlwe.Plaintext) ([]byte, error) {
-	decoder := heint.NewEncoder(rlweStruct.parameters)
+	decoder := bgv.NewEncoder(rlweStruct.parameters)
 	temp_response := make([]uint64, rlweStruct.parameters.N())
 	err := decoder.Decode(plaintext, temp_response)
 	if err != nil {
@@ -242,7 +242,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessResponseToPlaintext(res *pb.PI
 		return nil, fmt.Errorf("could not unmarshal response from PB %s", err)
 	}
 
-	decryptor := heint.NewDecryptor(rlweStruct.parameters, rlweStruct.secret_key)
+	decryptor := bgv.NewDecryptor(rlweStruct.parameters, rlweStruct.secret_key)
 	var allPlaintextBytes []byte
 	for i := range rlweStruct.response_ciphertexts {
 		plaintext := decryptor.DecryptNew(&rlweStruct.response_ciphertexts[i])
@@ -276,7 +276,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 	}
 
 	evaluation_keys := rlweStruct.evaluation_keys
-	evaluator := heint.NewEvaluator(rlweStruct.parameters, evaluation_keys)
+	evaluator := bgv.NewEvaluator(rlweStruct.parameters, evaluation_keys)
 
 	// generate indicator vector using encrypted query, evaluation keys
 	var indicator_bits []*rlwe.Ciphertext

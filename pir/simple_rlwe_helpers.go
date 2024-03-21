@@ -5,28 +5,24 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/tuneinsight/lattigo/v5/schemes/bgv"
 	"github.com/tuneinsight/lattigo/v5/utils/structs"
 
 	"github.com/plprobelab/zikade/pb"
 	"github.com/tuneinsight/lattigo/v5/core/rlwe"
-	"github.com/tuneinsight/lattigo/v5/he/heint"
 )
 
 // From https://github.com/tuneinsight/lattigo/blob/master/schemes/bgv/examples_parameters.go
 func (rlweStruct *SimpleRLWE_PIR_Protocol) generateParameters() error { //
-	HEIntParamsN12QP109 := heint.ParametersLiteral{
-		LogN: 12,
-		LogQ: []int{54},
-		LogP: []int{55},
-		// P:    []uint64{562949953216513},
-		// Q:    []uint64{1152921504606830593},
-		// PlaintextModulus: 16760833,
-		// PlaintextModulus: 0x106001, //1073153,
+	BGVParamsN12QP109 := bgv.ParametersLiteral{
+		LogN:             12,
+		LogQ:             []int{54},
+		LogP:             []int{55},
 		PlaintextModulus: 270337,
 		// PlaintextModulus: 0x1001,
 	}
 
-	params, err := heint.NewParametersFromLiteral(HEIntParamsN12QP109)
+	params, err := bgv.NewParametersFromLiteral(BGVParamsN12QP109)
 	if err != nil {
 		return fmt.Errorf("could not create test HE Parameters %s", err)
 	}
@@ -40,7 +36,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) encryptRLWEPlaintexts(plaintexts []*r
 		return nil, fmt.Errorf("secret key has not been generated yet")
 	}
 	ciphertexts := make([]rlwe.Ciphertext, len(plaintexts))
-	sk_encryptor := heint.NewEncryptor(rlweStruct.parameters, rlweStruct.secret_key)
+	sk_encryptor := bgv.NewEncryptor(rlweStruct.parameters, rlweStruct.secret_key)
 	for i := range plaintexts {
 		tmp, err := sk_encryptor.EncryptNew(plaintexts[i])
 		if err != nil {
