@@ -3,7 +3,6 @@ package zikade
 import (
 	"bytes"
 	"context"
-	"encoding/binary"
 	"errors"
 	"fmt"
 
@@ -14,7 +13,6 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	otel "go.opentelemetry.io/otel/trace"
 	"golang.org/x/exp/slog"
-	"google.golang.org/protobuf/proto"
 
 	"github.com/plprobelab/zikade/kadt"
 	"github.com/plprobelab/zikade/pb"
@@ -352,12 +350,12 @@ func (d *DHT) handlePrivateGetProviderRecords(ctx context.Context, remote peer.I
 	}
 	mapCIDtoProviderPeers, err := backend.MapCIDBucketsToProviderPeerBytesForPIR(ctx, bucketIndexLength)
 	if err != nil {
-		return nil, fmt.Errorf("could not construct a map of CIDs to provider peers for PIR")
+		return nil, fmt.Errorf("could not construct a map of CIDs to provider peers for PIR,  %s\n", err)
 	}
 
 	providerPeersResponse, err := private_routing.RunPIRforProviderPeersRecords(providerPeersRequest, mapCIDtoProviderPeers)
 	if err != nil {
-		return nil, fmt.Errorf("could not run PIR for provider peers")
+		return nil, fmt.Errorf("PIR for provider peers failed, %s\n", err)
 	}
 
 	response := &pb.Message{
@@ -376,29 +374,6 @@ func (d *DHT) handlePrivateGetProviderRecords(ctx context.Context, remote peer.I
 // The d.host.Peerstore() consists of <peer ID, peer address> records.
 // We then join these key-value stores here, oblivious to the target.
 func (d *DHT) NormalizeRTJoinedWithPeerStore(queryingPeerKadId kadt.Key) ([][]byte, error) {
-	// TODO: How to extend this function to provide the functionality in Line 52 in handleFindPeer
-	//  obliviously to the target key.
-	// Line 52 in handleFindPeer looks up the peerstore with the target kademlia ID,
-	// even though closerPeer looks up the peerStore with the output of
-	// d.rt.NearestNodes(..)
-	// See the comments there --- the rationale is that the target may be in a bucket
-	// of the RT that was full, so we don't store its <kad ID, peer ID> in the RT.
-	// But we still store its <peer ID, multiaddress array> in the peerstore.
-
-	// So to do this obliviously to the target, we add some steps to *this function*,
-	//  which is run before answering the PIR request.
-	// We can fill up the RT with <kad ID, peer ID> of nodes that *are* in the peerstore but *not* in the RT.
-	// This effectively adds more entries to the RT; some other than the target which may not have been there earlier.
-	// So we need to ask Gui if this is acceptable. Let's suppose it is acceptable.
-	// Then, we would've ensured that every <peer ID, multiaddress []> in the peerstore
-	// has a corresponding <kad ID, peer ID> in the RT.
-
-	// Then we would run NormalizeRT as seen below.
-	// (Buckets might be very full already, so we might not need to normalize some buckets.)
-	// Then the join will ensure that *any* target which was earlier in the peerstore,
-	// but not in the RT, will *also* be included in the join output:
-	// Join: <target's kadID, target's peerID> <target's peerID, target's address>
-
 	// Bucket -> [PeerID1, PeerID2, ...]
 	bucketsWithPeerIDs := d.rt.NormalizeRT(queryingPeerKadId)
 
@@ -416,19 +391,11 @@ func (d *DHT) NormalizeRTJoinedWithPeerStore(queryingPeerKadId kadt.Key) ([][]by
 		mesg := &pb.Message{
 			CloserPeers: addrInfos,
 		}
-		marshalledRoutingEntries, err := proto.Marshal(mesg)
+		plaintext, err := private_routing.MarshallPBToPlaintext(mesg)
 		if err != nil {
-			return nil, fmt.Errorf("Could not marshal peers in RT. Err: %s ", err)
+			return nil, err
 		}
-		// TODO Add similar code around the proto.Marshal call in backend_providers.go
-		buf := new(bytes.Buffer)
-		var lenMarshalledRTEntries = uint64(len(marshalledRoutingEntries))
-		err = binary.Write(buf, binary.LittleEndian, lenMarshalledRTEntries)
-		if err != nil {
-			return nil, fmt.Errorf("couldn't convert the length of the RT entries to a byte array %s", err)
-		}
-		// fmt.Printf("Bucket %d has %d bytes, expressed in bytes: %x\n", bid, lenMarshalledRTEntries, buf.Bytes())
-		bucketsWithAddrInfos[bid] = append(buf.Bytes(), marshalledRoutingEntries...)
+		bucketsWithAddrInfos[bid] = plaintext
 	}
 
 	//for i, bucketBytes := range bucketsWithAddrInfos {
@@ -440,24 +407,25 @@ func (d *DHT) NormalizeRTJoinedWithPeerStore(queryingPeerKadId kadt.Key) ([][]by
 	return bucketsWithAddrInfos, nil
 }
 
-func transformPlaintextRoutingEntriesToPB(paddedMarshalledBucket []byte) (*pb.Message, error) {
-	buf := bytes.NewReader(paddedMarshalledBucket[0:8])
-	var lenMarshalledRTEntries uint64
-	err := binary.Read(buf, binary.LittleEndian, &lenMarshalledRTEntries)
-	if err != nil {
-		fmt.Printf("couldn't read the length of the RT entries to a byte array %s", err)
-		return nil, err
-	}
-	fmt.Printf("marshalled bucket length %d\n", lenMarshalledRTEntries)
+// TODO: How to extend this function to provide the functionality in Line 52 in handleFindPeer
+//  obliviously to the target key.
+// Line 52 in handleFindPeer looks up the peerstore with the target kademlia ID,
+// even though closerPeer looks up the peerStore with the output of
+// d.rt.NearestNodes(..)
+// See the comments there --- the rationale is that the target may be in a bucket
+// of the RT that was full, so we don't store its <kad ID, peer ID> in the RT.
+// But we still store its <peer ID, multiaddress array> in the peerstore.
 
-	marshalledBucket := paddedMarshalledBucket[8 : 8+lenMarshalledRTEntries]
+// So to do this obliviously to the target, we add some steps to *this function*,
+//  which is run before answering the PIR request.
+// We can fill up the RT with <kad ID, peer ID> of nodes that *are* in the peerstore but *not* in the RT.
+// This effectively adds more entries to the RT; some other than the target which may not have been there earlier.
+// So we need to ask Gui if this is acceptable. Let's suppose it is acceptable.
+// Then, we would've ensured that every <peer ID, multiaddress []> in the peerstore
+// has a corresponding <kad ID, peer ID> in the RT.
 
-	resp := &pb.Message{
-		CloserPeers: nil,
-	}
-	err = proto.Unmarshal(marshalledBucket, resp)
-	if err != nil {
-		return nil, fmt.Errorf("Could not marshal peers in RT. Err: %s ", err)
-	}
-	return resp, nil
-}
+// Then we would run NormalizeRT as seen below.
+// (Buckets might be very full already, so we might not need to normalize some buckets.)
+// Then the join will ensure that *any* target which was earlier in the peerstore,
+// but not in the RT, will *also* be included in the join output:
+// Join: <target's kadID, target's peerID> <target's peerID, target's address>

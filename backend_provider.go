@@ -5,23 +5,22 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"github.com/plprobelab/zikade/private_routing"
 	"io"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/ipfs/go-cid"
-	"github.com/plprobelab/zikade/pb"
-	"google.golang.org/protobuf/proto"
-
 	"github.com/benbjohnson/clock"
 	lru "github.com/hashicorp/golang-lru/v2"
+	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/multiformats/go-base32"
+	"github.com/plprobelab/zikade/pb"
 	"go.opentelemetry.io/otel/metric"
 	"golang.org/x/exp/slog"
 
@@ -332,49 +331,14 @@ func (p *ProvidersBackend) MapCIDBucketsToProviderPeerBytesForPIR(ctx context.Co
 	bucketsInBytes := make([][]byte, len(buckets))
 	for i, bucket := range buckets {
 		// marshal the bucket
-		marshalledBucket, err := proto.Marshal(&pb.Message{
+		plaintext, err := private_routing.MarshallPBToPlaintext(&pb.Message{
 			Buckets: bucket,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("could not marshal bucket. Err: %s ", err)
+			return nil, err
 		}
-		bucketsInBytes[i] = marshalledBucket
+		bucketsInBytes[i] = plaintext
 	}
-
-	// // bucketing logic
-	// if bucketIndexLength < 8 {
-	// 	return nil, fmt.Errorf("bucketIndexLength represents the length of the bucket index, in *bits* --- it must be greater than 8")
-	// }
-	// if bucketIndexLength%8 != 0 {
-	// 	// TODO: We should get rid of this requirement
-	// 	return nil, fmt.Errorf("bucketIndexLength represents the length of the bucket index, in *bits* --- it must be a multiple of 8")
-	// }
-
-	// secondMap := make([]map[string][]byte, 1<<bucketIndexLength)
-	// for givencid, value := range mapCIDtoProviderPeers {
-	// 	// TODO: Refactor out common logic to providerAdsGenerateBucketIndexFromCID function
-	// 	_, cidObj, err := cid.CidFromBytes([]byte(givencid))
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	//cidObj, err := cid.Decode(givencid)
-	// 	//if err != nil {
-	// 	//	return nil, err
-	// 	//}
-	// 	cidHashed := cidObj.Hash()
-	// 	// bucketIndexLength := log2_num_records - log2_num_Buckets
-	// 	bucketIndexStr := cidHashed[2 : (bucketIndexLength/8)+2].HexString() // skipping first two bytes for hash function code, length
-	// 	bucketIndex, err := strconv.ParseInt(bucketIndexStr, 16, 64)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-
-	// 	if secondMap[bucketIndex] == nil {
-	// 		secondMap[bucketIndex] = make(map[string][]byte)
-	// 	}
-	// 	secondMap[bucketIndex][givencid] = value
-	// }
-
 	return bucketsInBytes, err
 }
 
@@ -671,23 +635,4 @@ func (p *ProvidersBackend) fetchLoopForEachElement(ctx context.Context, e dsq.Re
 	// get set of providers, add provider to set.
 	providerSetForCID := mapCIDtoProviderSet[cid]
 	providerSetForCID.addProvider(addrInfo, rec.expiry)
-}
-
-func providerAdsGenerateBucketIndexFromCID(fileCID cid.Cid, log2_num_records int, log2_num_Buckets int) (int, error) {
-	// M=2^m number of records
-	// we set bucket size B = 2^b = 256 records in total i.e. overhead of 2^b - 1
-	// number of buckets = 2^n = 2^m / (2^b) = 2^(m-b)
-	// or 2^b = 2^(m-n)
-	// can access the length of the hash by fileCID.Prefix().MhLength
-	cidHashed := fileCID.Hash()
-	bucketIndexLength := log2_num_records - log2_num_Buckets
-	bucketIndexStr := cidHashed[2 : bucketIndexLength+2].HexString() // skipping first two bytes for hash function code, length
-	// TODO: Check base here.
-
-	bucketIndex, err := strconv.ParseInt(bucketIndexStr, 16, 64)
-	if err != nil {
-		return -1, err
-	}
-	fmt.Printf("%T, %v\n", bucketIndex, bucketIndex)
-	return int(bucketIndex), nil
 }
