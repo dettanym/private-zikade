@@ -343,8 +343,8 @@ func (d *DHT) handlePrivateGetProviderRecords(ctx context.Context, remote peer.I
 	}
 
 	backend, err := typedBackend[*ProvidersBackend](d, namespaceProviders)
-	// TODO: The client should pass this in the PB.
-	bucketIndexLength := 8
+	// TODO: This is the bucket index length in the number of bits. It should be hardcoded to 4096.
+	bucketIndexLength := 5 * 8
 	if err != nil {
 		panic("could not typecast backend, to run the function to prepare the DB for PIR")
 	}
