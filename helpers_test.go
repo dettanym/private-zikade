@@ -1,7 +1,9 @@
 package zikade
 
 import (
+	"context"
 	"fmt"
+	"github.com/ipfs/go-cid"
 	"math/rand"
 	"testing"
 	"time"
@@ -111,7 +113,7 @@ func fillRoutingTable(t testing.TB, d *DHT, n int) []peer.ID {
 		// craft random network address for peer
 		// use IP suffix of 1.1 to not collide with actual test hosts that
 		// choose a random IP address via 127.0.0.1:0.
-		a, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/127.0.1.1/tcp/%d", 2000+i))
+		a, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/127.0.1.1/tcp/%d", (2000+i)%65536))
 		require.NoError(t, err)
 
 		// add peer information to peer store
@@ -190,4 +192,62 @@ func printCloserPeers(resp *pb.Message) {
 		}
 		// println(val.GetConnection().String())
 	}
+}
+
+func createProviders(t *testing.T, d *DHT, numberOfCids int) (*ProvidersBackend, []peer.AddrInfo, []cid.Cid) {
+	be, err := typedBackend[*ProvidersBackend](d, namespaceProviders)
+	require.NoError(t, err)
+	ctx := context.Background()
+
+	// creates CIDs and inserts their providers into own provider store
+	providers := []peer.AddrInfo{}
+	for i := 0; i < numberOfCids; i++ {
+		providers = append(providers, newAddrInfo(t))
+	}
+
+	// make half as many CIDs as providers
+	cids := make([]cid.Cid, len(providers)/2)
+	for i := 0; i < len(providers)/2; i++ {
+		fileCID := NewRandomContent(t)
+		cids[i] = fileCID
+	}
+
+	// advertise each CID by two providers
+	for i, p := range providers {
+		// add to addresses peerstore
+		d.host.Peerstore().AddAddrs(p.ID, p.Addrs, time.Hour)
+
+		var fileCID cid.Cid
+		if i < len(providers)/2 {
+			fileCID = cids[i]
+		} else {
+			fileCID = cids[i-len(providers)/2]
+		}
+
+		// write to datastore
+		dsKey := newDatastoreKey(namespaceProviders, string(fileCID.Hash()), string(p.ID))
+		rec := expiryRecord{expiry: time.Now()}
+		err := be.datastore.Put(ctx, dsKey, rec.MarshalBinary())
+		require.NoError(t, err)
+	}
+
+	return be, providers, cids
+
+}
+
+func printStats(ourResults []results) {
+	var avgReqLen float64
+	var avgResLen float64
+	var avgServerTime float64
+	runs := len(ourResults)
+	for _, res := range ourResults {
+		// print("\n ", i, " ", res.requestLen, " ", res.responseLen, " ", res.serverRuntime, "\n")
+		avgReqLen += float64(res.requestLen)
+		avgResLen += float64(res.responseLen)
+		avgServerTime += float64(res.serverRuntime)
+	}
+	avgReqLen = avgReqLen / float64(runs)
+	avgResLen = avgResLen / float64(runs)
+	avgServerTime = float64(int64(int(avgServerTime) / runs))
+	fmt.Printf("Averaged results over %d runs: Req Length %f, Response Length %f, Server time %f\n", runs, avgReqLen, avgResLen, avgServerTime)
 }
