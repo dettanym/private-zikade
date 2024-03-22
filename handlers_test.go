@@ -5,14 +5,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/plprobelab/zikade/private_routing"
 	"reflect"
 	"strconv"
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/ipfs/go-cid"
-	"github.com/plprobelab/zikade/pir"
 
 	"github.com/benbjohnson/clock"
 	"github.com/ipfs/boxo/ipns"
@@ -1460,7 +1458,7 @@ func TestDHT_normalizeRTJoinedWithPeerStore(t *testing.T) {
 	require.NoError(t, err)
 
 	for _, paddedMarshalledBucket := range normalizedRT {
-		resp, err := transformPlaintextRoutingEntriesToPB(paddedMarshalledBucket)
+		resp, err := private_routing.UnmarshallPlaintextToPB(paddedMarshalledBucket)
 		require.NoError(t, err)
 
 		assert.Len(t, resp.CloserPeers, d.cfg.BucketSize)
@@ -1498,7 +1496,7 @@ func TestDHT_handlePrivateFindPeer(t *testing.T) {
 
 	serverPeer := newPeerID(t)
 
-	peers := fillRoutingTable(t, d, 250)
+	peers := fillRoutingTable(t, d, 2000)
 
 	assert.Equal(t, len(peers), d.host.Peerstore().PeersWithAddrs().Len())
 	printCPLAndBucketSizes(d, peers)
@@ -1508,49 +1506,30 @@ func TestDHT_handlePrivateFindPeer(t *testing.T) {
 
 	targetKey := kadt.PeerID(keyBytes).Key()
 	serverKey := kadt.PeerID(serverPeer).Key()
-	cpl := uint64(targetKey.CommonPrefixLength(serverKey))
-	println("CPL between server and target: ", cpl, "\n")
 
-	// TODO: make log2_num_rows to be 8 once the DB is fully created
-	//  or even better, set it internally based on the size of the normalized RT struct
-	chosenPirProtocol := pir.NewSimpleRLWE_PIR_Protocol(4)
-	pirRequest, err := chosenPirProtocol.GenerateRequestFromQuery(int(cpl))
-	if err != nil {
-		fmt.Printf("%s", err)
-		return
-	}
+	pirClientPeerRouting := private_routing.NewPirClientPeerRouting()
+	pirRequestCloserPeers, err := pirClientPeerRouting.GenerateRequest(targetKey, serverKey)
+	require.NoError(t, err)
 
 	msg := &pb.Message{
 		Type:               pb.Message_PRIVATE_FIND_NODE,
 		PIR_Message_ID:     1234,
-		CloserPeersRequest: pirRequest,
+		CloserPeersRequest: pirRequestCloserPeers,
 	}
 
-	ctResp, err := d.handlePrivateFindPeer(context.Background(), peers[0], msg)
+	resp, err := d.handlePrivateFindPeer(context.Background(), peers[0], msg)
 	require.NoError(t, err)
 
-	assert.Equal(t, pb.Message_PRIVATE_FIND_NODE, ctResp.Type)
-	assert.Equal(t, ctResp.PIR_Message_ID, msg.PIR_Message_ID)
-
-	plaintext, err := chosenPirProtocol.ProcessResponseToPlaintext(ctResp.CloserPeersResponse)
-	require.NoError(t, err)
-
-	println("Plaintext bucket")
-	for _, b := range plaintext {
-		print(b, ",")
-	}
-
-	resp, err := transformPlaintextRoutingEntriesToPB(plaintext)
-	if err != nil {
-		fmt.Printf("error unmarshalling %s", err)
-		return
-	}
-
+	assert.Equal(t, pb.Message_PRIVATE_FIND_NODE, resp.Type)
+	assert.Equal(t, resp.PIR_Message_ID, msg.PIR_Message_ID)
+	assert.NotNil(t, resp.CloserPeersResponse)
 	assert.Nil(t, resp.Record)
-	assert.Len(t, resp.CloserPeers, d.cfg.BucketSize)
+
+	plaintextPBCloserPeers, err := pirClientPeerRouting.ProcessResponse(resp.CloserPeersResponse)
+	require.NoError(t, err)
+
+	checkCloserPeers(t, plaintextPBCloserPeers, d.cfg.BucketSize)
 	assert.Len(t, resp.ProviderPeers, 0)
-	assert.Equal(t, len(resp.CloserPeers[0].Addrs), 1)
-	printCloserPeers(resp)
 
 }
 
@@ -1568,99 +1547,48 @@ func TestDHT_handlePrivateGetProviders(t *testing.T) {
 	assert.Equal(t, len(peers), d.host.Peerstore().PeersWithAddrs().Len())
 	printCPLAndBucketSizes(d, peers)
 
-	// First generate PIR request
+	// First generate PIR pirRequestProviderPeers
 	keyBytes := []byte("random-key")
 
 	targetKey := kadt.PeerID(keyBytes).Key()
 	serverKey := kadt.PeerID(queryingPeer).Key()
-	cpl := uint64(targetKey.CommonPrefixLength(serverKey))
 
-	// TODO: make log2_num_rows to be 8 once the DB is fully created
-	//  or even better, set it internally based on the size of the normalized RT struct
-	chosenPirProtocolPeerRouting := pir.NewSimpleRLWE_PIR_Protocol(2)
-	closerPeersRequest, err := chosenPirProtocolPeerRouting.GenerateRequestFromQuery(int(cpl))
-	if err != nil {
-		return
-	}
-
-	be, err := typedBackend[*ProvidersBackend](d, namespaceProviders)
+	pirClientPeerRouting := private_routing.NewPirClientPeerRouting()
+	pirRequestCloserPeers, err := pirClientPeerRouting.GenerateRequest(targetKey, serverKey)
 	require.NoError(t, err)
-	ctx := context.Background()
 
 	log2_num_records := 10
-
-	// creates CIDs and inserts their providers into own provider store
-	providers := []peer.AddrInfo{}
-	for i := 0; i < 1<<log2_num_records; i++ {
-		providers = append(providers, newAddrInfo(t))
-	}
-
-	// make half as many CIDs as providers
-	cids := make([]cid.Cid, len(providers)/2)
-	for i := 0; i < len(providers)/2; i++ {
-		fileCID := NewRandomContent(t)
-		cids[i] = fileCID
-	}
-
-	// advertise each CID by two providers
-	for i, p := range providers {
-		// add to addresses peerstore
-		d.host.Peerstore().AddAddrs(p.ID, p.Addrs, time.Hour)
-
-		var fileCID cid.Cid
-		if i < len(providers)/2 {
-			fileCID = cids[i]
-		} else {
-			fileCID = cids[i-len(providers)/2]
-		}
-
-		// write to datastore
-		dsKey := newDatastoreKey(namespaceProviders, string(fileCID.Hash()), string(p.ID))
-		rec := expiryRecord{expiry: time.Now()}
-		err := be.datastore.Put(ctx, dsKey, rec.MarshalBinary())
-		require.NoError(t, err)
-	}
-
-	log2_num_Buckets := 8
+	be, providers, cids := createProviders(t, d, 1<<log2_num_records)
+	log2_num_Buckets := 5
 	var lookupFileCID = cids[0]
-	bucketIndex, err := providerAdsGenerateBucketIndexFromCID(lookupFileCID, log2_num_records, log2_num_Buckets)
+	pirClientProviderRouting := private_routing.NewPirClientProviderRouting(log2_num_Buckets)
+	pirRequestProviderPeers, err := pirClientProviderRouting.GenerateRequest(lookupFileCID)
 	require.NoError(t, err)
-
-	chosenPirProtocolProviderRouting := pir.NewSimpleRLWE_PIR_Protocol(log2_num_Buckets)
-	providerPeersRequest, err := chosenPirProtocolProviderRouting.GenerateRequestFromQuery(bucketIndex)
-	if err != nil {
-		return
-	}
 
 	msg := &pb.Message{
 		Type:                 pb.Message_PRIVATE_FIND_NODE,
 		PIR_Message_ID:       1234,
-		CloserPeersRequest:   closerPeersRequest,
-		ProviderPeersRequest: providerPeersRequest,
+		CloserPeersRequest:   pirRequestCloserPeers,
+		ProviderPeersRequest: pirRequestProviderPeers,
 	}
 	//
 	resp, err := d.handlePrivateGetProviderRecords(context.Background(), queryingPeer, msg)
 	require.NoError(t, err)
 
-	assert.Equal(t, pb.Message_PRIVATE_GET_PROVIDERS, resp.Type)
+	assert.Equal(t, pb.Message_PRIVATE_FIND_NODE, resp.Type)
 	assert.Equal(t, resp.PIR_Message_ID, msg.PIR_Message_ID)
+	assert.NotNil(t, resp.CloserPeersResponse)
+	assert.Nil(t, resp.Record)
 
-	_, err = chosenPirProtocolProviderRouting.ProcessResponseToPlaintext(resp.ProviderPeersResponse)
+	plaintextPBCloserPeers, err := pirClientPeerRouting.ProcessResponse(resp.CloserPeersResponse)
 	require.NoError(t, err)
 
-	// // Test to make sure this works
+	checkCloserPeers(t, plaintextPBCloserPeers, d.cfg.BucketSize)
 
-	// protoMsg := &pb.Message{
-	// 	Buckets: nil,
-	// }
-	// err = proto.Unmarshal(responseBucket, protoMsg)
-	// require.NoError(t, err)
+	plaintextPBProviderPeers, err := pirClientPeerRouting.ProcessResponse(resp.ProviderPeersResponse)
+	require.NoError(t, err)
 
-	// TODO: Process the encrypted peers in resp.ProviderPeersResponse struct
-	//  into plaintext form, and then check that each of them is one of the providers
-	//   from the variable above. Then check that there exists the same number of providers
-	//    for the given CID, in the response as in the normal handleGetProviders case.
-	//     (There may be more providers, but for other CIDs.)
+	checkProviderPeers(t, plaintextPBProviderPeers, be, providers)
 }
 
 func BenchmarkDHT_PrivateFindPeer(b *testing.B) {
@@ -1675,13 +1603,25 @@ func BenchmarkDHT_PrivateFindPeer(b *testing.B) {
 	runs := 100
 	ourResults := make([]results, runs)
 
+	pirClient := private_routing.NewPirClientPeerRouting()
+
 	// build requests
 	reqs := make([]*pb.Message, runs)
 	for i := 0; i < runs; i++ {
 		keyBytes := []byte("random-key-" + strconv.Itoa(i))
 
 		targetKey := kadt.PeerID(keyBytes).Key()
-		reqs[i], ourResults[i].requestLen = genPrivateRequest(b, targetKey, serverKey)
+
+		pirRequest, err := pirClient.GenerateRequest(targetKey, serverKey)
+		require.NoError(b, err)
+
+		reqs[i] = &pb.Message{
+			Type:               pb.Message_PRIVATE_FIND_NODE,
+			PIR_Message_ID:     1234,
+			CloserPeersRequest: pirRequest,
+		}
+
+		ourResults[i].requestLen = len(pirRequest.GetEncryptedQuery()) + len(pirRequest.GetParameters()) + len(pirRequest.GetRLWEEvaluationKeys())
 	}
 
 	ctx := context.Background()
@@ -1699,39 +1639,32 @@ func BenchmarkDHT_PrivateFindPeer(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	var avgReqLen float64
-	var avgResLen float64
-	var avgServerTime float64
-	for _, res := range ourResults {
-		// print("\n ", i, " ", res.requestLen, " ", res.responseLen, " ", res.serverRuntime, "\n")
-		avgReqLen += float64(res.requestLen)
-		avgResLen += float64(res.responseLen)
-		avgServerTime += float64(res.serverRuntime)
-	}
-	avgReqLen = avgReqLen / float64(runs)
-	avgResLen = avgResLen / float64(runs)
-	avgServerTime = float64(int64(int(avgServerTime) / runs))
-	print(avgReqLen, " ", avgResLen, " ", avgServerTime)
+	printStats(ourResults)
 }
 
-func genPrivateRequest(b *testing.B, targetKey kadt.Key, serverKey kadt.Key) (*pb.Message, int) {
-	cpl := uint64(targetKey.CommonPrefixLength(serverKey))
-	// println("CPL between server and target: ", cpl, "\n")
+func checkCloserPeers(t *testing.T, resp *pb.Message, bucketSize int) {
+	assert.Len(t, resp.CloserPeers, bucketSize)
+	assert.Equal(t, len(resp.CloserPeers[0].Addrs), 1)
+	printCloserPeers(resp)
+}
 
-	// TODO: make log2_num_rows to be 8 once the DB is fully created
-	//  or even better, set it internally based on the size of the normalized RT struct
-	chosenPirProtocol := pir.NewSimpleRLWE_PIR_Protocol(8)
-	pirRequest, err := chosenPirProtocol.GenerateRequestFromQuery(int(cpl))
-	require.NoError(b, err)
-
-	pirRequestLen := len(pirRequest.GetEncryptedQuery()) + len(pirRequest.GetParameters()) + len(pirRequest.GetRLWEEvaluationKeys())
-	// print(pirRequestLen)
-
-	msg := &pb.Message{
-		Type:               pb.Message_PRIVATE_FIND_NODE,
-		PIR_Message_ID:     1234,
-		CloserPeersRequest: pirRequest,
+func checkProviderPeers(t *testing.T, resp *pb.Message, backend *ProvidersBackend, providers []peer.AddrInfo) {
+	// check that each provider is one of the providers from the variable above
+	// based on the multiaddresses
+	for _, providerPeer := range resp.ProviderPeers {
+		assert.Len(t, providerPeer.Addresses(), 1)
+		multiaddr := providerPeer.Addresses()[0]
+		matchFound := false
+		for _, provider := range providers {
+			if provider.Addrs[0] == multiaddr {
+				matchFound = true
+				break
+			}
+		}
+		require.True(t, matchFound)
 	}
-
-	return msg, pirRequestLen
+	// TODO: check that there exists 2 providers
+	//    for the given CID, in the response as in the normal handleGetProviders case.
+	//     (There may be more providers, but for other CIDs.)
+	// require.Len(t, resp.ProviderPeers, 2) // this is incorrect probably
 }
