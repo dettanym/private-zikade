@@ -1,8 +1,10 @@
 package pir
 
 import (
+	"fmt"
 	"log"
 	"math/big"
+	"sync"
 	"time"
 
 	"github.com/lucasmenendez/gopaillier/pkg/paillier"
@@ -33,6 +35,16 @@ func NewBasicPaillier_PIR_Protocol(log2_num_rows int) *BasicPaillier_PIR_Protoco
 		log2_num_rows: log2_num_rows,
 	}
 	basic_paillier_protocol.pailler_bitlength = 3072
+	basic_paillier_protocol.bytesPerCiphertext = basic_paillier_protocol.pailler_bitlength / 8
+	return basic_paillier_protocol
+}
+
+func INSECURE_NewBasicPaillier_PIR_Protocol_INSECURE(log2_num_rows int) *BasicPaillier_PIR_Protocol {
+
+	basic_paillier_protocol := &BasicPaillier_PIR_Protocol{
+		log2_num_rows: log2_num_rows,
+	}
+	basic_paillier_protocol.pailler_bitlength = 1024
 	basic_paillier_protocol.bytesPerCiphertext = basic_paillier_protocol.pailler_bitlength / 8
 	return basic_paillier_protocol
 }
@@ -111,7 +123,8 @@ func (paillierProtocol *BasicPaillier_PIR_Protocol) transformDBToPlaintextForm(d
 	// transform the database into a plaintext
 	paillierProtocol.plaintextDB = make([][]*big.Int, len(database))
 	// TODO: For now, assuming that the bytes in each row can fit in one plaintext
-	paillierProtocol.needed_cts = (len(database) + paillierProtocol.bytesPerCiphertext - 1) / paillierProtocol.bytesPerCiphertext
+	max_len_database_entries := maxLengthDBRows(database)
+	paillierProtocol.needed_cts = (max_len_database_entries + paillierProtocol.bytesPerCiphertext - 1) / paillierProtocol.bytesPerCiphertext
 	for i := range database {
 		paillierProtocol.plaintextDB[i] = make([]*big.Int, paillierProtocol.needed_cts)
 		// TODO: assumes all rows have the same length
@@ -168,19 +181,46 @@ func (paillierProtocol *BasicPaillier_PIR_Protocol) ProcessRequestAndReturnRespo
 	// numberOfQueryCiphertexts := len(encrypted_query)
 
 	num_db_rows := len(database)
+	num_rows := 1 << paillierProtocol.log2_num_rows
+
+	if num_rows > num_db_rows {
+		for j := num_db_rows; j < num_rows; j++ {
+			encrypted_query[num_db_rows-1] = paillierProtocol.public_key.AddEncrypted(encrypted_query[num_db_rows-1], encrypted_query[j])
+		}
+	} else if num_rows < num_db_rows {
+		return nil, fmt.Errorf("initialize this struct with log2_num_rows as greater than or equal to the log of the number of rows in the DB")
+	}
+
+	var wg sync.WaitGroup
+	var mu sync.Mutex
 
 	paillierProtocol.response_ciphertexts = make([]*big.Int, paillierProtocol.needed_cts)
+	initialized := make([]bool, paillierProtocol.needed_cts)
 
 	for j := 0; j < paillierProtocol.needed_cts; j++ {
 		for i := 0; i < num_db_rows; i++ {
-			encryptedMul := paillierProtocol.public_key.Mul(encrypted_query[i], paillierProtocol.plaintextDB[i][j])
-			if i == 0 {
-				paillierProtocol.response_ciphertexts[j] = encryptedMul
-			} else {
-				paillierProtocol.response_ciphertexts[j] = paillierProtocol.public_key.AddEncrypted(encryptedMul, paillierProtocol.response_ciphertexts[j])
-			}
+			// encryptedMul := paillierProtocol.public_key.Mul(encrypted_query[i], paillierProtocol.plaintextDB[i][j])
+			// if i == 0 {
+			// 	paillierProtocol.response_ciphertexts[j] = encryptedMul
+			// } else {
+			// 	paillierProtocol.response_ciphertexts[j] = paillierProtocol.public_key.AddEncrypted(encryptedMul, paillierProtocol.response_ciphertexts[j])
+			// }
+			wg.Add(1)
+			go func(i, j int) {
+				defer wg.Done()
+				encryptedMul := paillierProtocol.public_key.Mul(encrypted_query[i], paillierProtocol.plaintextDB[i][j])
+				mu.Lock()
+				defer mu.Unlock()
+				if !initialized[j] {
+					paillierProtocol.response_ciphertexts[j] = encryptedMul
+					initialized[j] = true
+				} else {
+					paillierProtocol.response_ciphertexts[j] = paillierProtocol.public_key.AddEncrypted(encryptedMul, paillierProtocol.response_ciphertexts[j])
+				}
+			}(i, j)
 		}
 	}
+	wg.Wait()
 
 	response, err := paillierProtocol.marshalResponseToPB()
 	if err != nil {
