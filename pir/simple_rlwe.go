@@ -3,13 +3,12 @@ package pir
 import (
 	"encoding/binary"
 	"fmt"
+	"math"
+
 	"github.com/plprobelab/zikade/pb"
 	"github.com/tuneinsight/lattigo/v5/core/rlwe"
 	"github.com/tuneinsight/lattigo/v5/schemes/bgv"
 	"github.com/tuneinsight/lattigo/v5/utils/structs"
-	"log"
-	"math"
-	"time"
 )
 
 type SimpleRLWE_PIR_Protocol struct {
@@ -259,7 +258,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 
 	// TODO: @Miti Replace logging the time with Go Benchmarks
 	//   https://pkg.go.dev/testing#hdr-Benchmarks
-	start := time.Now()
+	// start := time.Now()
 
 	err := rlweStruct.unmarshallRequestFromPB(request)
 	if err != nil {
@@ -340,8 +339,8 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 		return nil, err
 	}
 
-	elapsed := time.Since(start)
-	log.Printf("elapsed time: %v", elapsed)
+	// elapsed := time.Since(start)
+	// log.Printf("elapsed time: %v", elapsed)
 
 	return response, nil
 }

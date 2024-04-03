@@ -2,10 +2,9 @@ package pir
 
 import (
 	"fmt"
-	"log"
 	"math/big"
+
 	"sync"
-	"time"
 
 	"github.com/lucasmenendez/gopaillier/pkg/paillier"
 	"github.com/plprobelab/zikade/pb"
@@ -90,14 +89,30 @@ func (paillierProtocol *BasicPaillier_PIR_Protocol) marshalRequestToPB() (*pb.PI
 
 func (paillierProtocol *BasicPaillier_PIR_Protocol) unmarshallRequestFromPB(req *pb.PIR_Request) error {
 	paillierProtocol.log2_num_rows = int(req.Log2NumRows)
-	paillierProtocol.encrypted_query = make([]*big.Int, len(req.EncryptedPaillierQuery))
-	for i := range req.EncryptedPaillierQuery {
-		paillierProtocol.encrypted_query[i] = new(big.Int).SetBytes(req.EncryptedPaillierQuery[i])
-	}
+
 	switch schemeDependent := req.SchemeDependent.(type) {
 	case *pb.PIR_Request_Paillier_Public_Key:
 		paillierProtocol.public_key = unmarshalPaillierPublicKeyFromBytes(schemeDependent.Paillier_Public_Key)
 	}
+
+	// m := paillierProtocol.public_key.N
+	// var randomNumber *big.Int
+	paillierProtocol.encrypted_query = make([]*big.Int, len(req.EncryptedPaillierQuery))
+	for i := range req.EncryptedPaillierQuery {
+		paillierProtocol.encrypted_query[i] = new(big.Int).SetBytes(req.EncryptedPaillierQuery[i])
+		// seededRand := rand.New(rand.NewSource(42 + int64(i)))
+		// randomNumber = new(big.Int).Rand(seededRand, m)
+		// fmt.Println("Random number: ", randomNumber)
+
+		// paillierProtocol.public_key.Add(randomNumber, paillierProtocol.encrypted_query[i])
+		// dec, err := paillierProtocol.secret_key.Decrypt(paillierProtocol.encrypted_query[i])
+		// if err != nil {
+		// 	return err
+		// }
+		// fmt.Println("Decrypted query: ", dec)
+		// fmt.Println()
+	}
+
 	return nil
 }
 
@@ -106,15 +121,38 @@ func (paillierProtocol *BasicPaillier_PIR_Protocol) GenerateRequestFromQuery(req
 	var err error
 	num_rows := 1 << paillierProtocol.log2_num_rows
 	paillierProtocol.encrypted_query = make([]*big.Int, num_rows)
+
+	// var randomNumber *big.Int
+	// m := paillierProtocol.public_key.N
+
 	for i := 0; i < num_rows; i++ {
 		bit := 0
 		if i == requested_row {
 			bit = 1
 		}
+		// normal way
 		paillierProtocol.encrypted_query[i], err = paillierProtocol.secret_key.PubKey.Encrypt(big.NewInt(int64(bit)))
 		if err != nil {
 			return nil, err
 		}
+
+		// 	// Beck way
+		// 	seededRand := rand.New(rand.NewSource(42 + int64(i)))
+		// 	randomNumber = new(big.Int).Rand(seededRand, m)
+		// 	// fmt.Println("Random number: ", randomNumber)
+		// 	decrypted, err := paillierProtocol.secret_key.Decrypt(randomNumber)
+		// 	if err != nil {
+		// 		return nil, err
+		// 	}
+		// 	// fmt.Println("Decrypted random number: ", decrypted)
+		// 	correction := big.NewInt(0)
+		// 	correction.Add(m, big.NewInt(int64(bit)))
+		// 	correction.Sub(correction, decrypted)
+		// 	if correction.Cmp(m) == 1 {
+		// 		correction.Sub(correction, m)
+		// 	}
+		// 	paillierProtocol.encrypted_query[i] = correction
+		// 	fmt.Println()
 	}
 	return paillierProtocol.marshalRequestToPB()
 }
@@ -164,7 +202,7 @@ func (paillierProtocol *BasicPaillier_PIR_Protocol) unmarshallResponseFromPB(res
 
 func (paillierProtocol *BasicPaillier_PIR_Protocol) ProcessRequestAndReturnResponse(request *pb.PIR_Request, database [][]byte) (*pb.PIR_Response, error) {
 
-	start := time.Now()
+	// start := time.Now()
 
 	err := paillierProtocol.unmarshallRequestFromPB(request)
 	if err != nil {
@@ -227,8 +265,8 @@ func (paillierProtocol *BasicPaillier_PIR_Protocol) ProcessRequestAndReturnRespo
 		return nil, err
 	}
 
-	elapsed := time.Since(start)
-	log.Printf("elapsed time: %v", elapsed)
+	// elapsed := time.Since(start)
+	// log.Printf("elapsed time: %v", elapsed)
 
 	return response, nil
 }
@@ -240,10 +278,14 @@ func (paillierProtocol *BasicPaillier_PIR_Protocol) ProcessResponseToPlaintext(r
 	}
 
 	// decrypt the response ciphertexts
-	decrypted, err := paillierProtocol.secret_key.Decrypt(paillierProtocol.response_ciphertexts[0])
-	if err != nil {
-		return nil, err
+	var all_bytes []byte
+	for i := range paillierProtocol.response_ciphertexts {
+		decrypted, err := paillierProtocol.secret_key.Decrypt(paillierProtocol.response_ciphertexts[i])
+		if err != nil {
+			return nil, err
+		}
+		all_bytes = append(all_bytes, decrypted.Bytes()...)
 	}
 
-	return decrypted.Bytes(), nil
+	return all_bytes, nil
 }

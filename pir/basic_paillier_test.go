@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/lucasmenendez/gopaillier/pkg/paillier"
+	"github.com/plprobelab/zikade/pb"
 )
 
 func TestBasicPIR_with_Paillier_marshal_and_unmarshal_public_key(t *testing.T) {
@@ -107,23 +108,23 @@ func TestBasicPIR_with_Paillier_ProcessRequestAndReturnResponse(t *testing.T) {
 	num_db_rows := 1 << log_2_num_db_rows
 	db := make([][]byte, num_db_rows)
 	db_element_size := 5
-	// response := &PIR_Response{}
-	// {
-	server_PIR_Protocol := INSECURE_NewBasicPaillier_PIR_Protocol_INSECURE(log_2_num_rows)
+	response := &pb.PIR_Response{}
+	{
+		server_PIR_Protocol := INSECURE_NewBasicPaillier_PIR_Protocol_INSECURE(log_2_num_rows)
 
-	for i := range db {
-		db[i] = make([]byte, db_element_size)
-		for j := 0; j < db_element_size; j++ {
-			db[i][j] = byte(rand.New(seed).Intn(256))
+		for i := range db {
+			db[i] = make([]byte, db_element_size)
+			for j := 0; j < db_element_size; j++ {
+				db[i][j] = byte(rand.New(seed).Intn(256))
+			}
 		}
-	}
 
-	response, err := server_PIR_Protocol.ProcessRequestAndReturnResponse(pirRequest, db)
-	if err != nil {
-		t.Error("Error in processing request and returning response")
-	}
+		response, err = server_PIR_Protocol.ProcessRequestAndReturnResponse(pirRequest, db)
+		if err != nil {
+			t.Error("Error in processing request and returning response")
+		}
 
-	// } // end server
+	} // end server
 
 	response_bytes, err := client_PIR_Protocol.ProcessResponseToPlaintext(response)
 	if err != nil {
@@ -161,24 +162,24 @@ func BenchmarkBasicPIR_with_Paillier_ProcessRequestAndReturnResponse(b *testing.
 	num_db_rows := 1 << log_2_num_db_rows
 	db := make([][]byte, num_db_rows)
 	db_element_size := 5
-	// response := &PIR_Response{}
-	// {
-	server_PIR_Protocol := NewBasicPaillier_PIR_Protocol(log_2_num_rows)
+	response := &pb.PIR_Response{}
+	{
+		server_PIR_Protocol := NewBasicPaillier_PIR_Protocol(log_2_num_rows)
 
-	for i := range db {
-		db[i] = make([]byte, db_element_size)
-		for j := 0; j < db_element_size; j++ {
-			db[i][j] = byte(rand.New(seed).Intn(256))
+		for i := range db {
+			db[i] = make([]byte, db_element_size)
+			for j := 0; j < db_element_size; j++ {
+				db[i][j] = byte(rand.New(seed).Intn(256))
+			}
 		}
-	}
 
-	response, err := server_PIR_Protocol.ProcessRequestAndReturnResponse(pirRequest, db)
-	if err != nil {
-		b.Errorf("Error: %v", err)
-		// return
-	}
+		response, err = server_PIR_Protocol.ProcessRequestAndReturnResponse(pirRequest, db)
+		if err != nil {
+			b.Errorf("Error: %v", err)
+			// return
+		}
 
-	// } // end server
+	} // end server
 
 	response_bytes, err := client_PIR_Protocol.ProcessResponseToPlaintext(response)
 	if err != nil {
