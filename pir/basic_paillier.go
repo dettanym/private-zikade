@@ -3,6 +3,7 @@ package pir
 import (
 	"fmt"
 	"math/big"
+	"math/rand"
 
 	"sync"
 
@@ -95,64 +96,63 @@ func (paillierProtocol *BasicPaillier_PIR_Protocol) unmarshallRequestFromPB(req 
 		paillierProtocol.public_key = unmarshalPaillierPublicKeyFromBytes(schemeDependent.Paillier_Public_Key)
 	}
 
-	// m := paillierProtocol.public_key.N
-	// var randomNumber *big.Int
+	Nsq := paillierProtocol.public_key.Nsq
+
 	paillierProtocol.encrypted_query = make([]*big.Int, len(req.EncryptedPaillierQuery))
+	var wg sync.WaitGroup
 	for i := range req.EncryptedPaillierQuery {
-		paillierProtocol.encrypted_query[i] = new(big.Int).SetBytes(req.EncryptedPaillierQuery[i])
-		// seededRand := rand.New(rand.NewSource(42 + int64(i)))
-		// randomNumber = new(big.Int).Rand(seededRand, m)
-		// fmt.Println("Random number: ", randomNumber)
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
 
-		// paillierProtocol.public_key.Add(randomNumber, paillierProtocol.encrypted_query[i])
-		// dec, err := paillierProtocol.secret_key.Decrypt(paillierProtocol.encrypted_query[i])
-		// if err != nil {
-		// 	return err
-		// }
-		// fmt.Println("Decrypted query: ", dec)
-		// fmt.Println()
+			seededRand := rand.New(rand.NewSource(42 + int64(i)))
+			randomPaillier := new(big.Int).Rand(seededRand, Nsq)
+
+			correction := new(big.Int).SetBytes(req.EncryptedPaillierQuery[i])
+
+			// Assuming paillierProtocol.encrypted_query is safe for concurrent use or properly synchronized
+			paillierProtocol.encrypted_query[i] = paillierProtocol.public_key.Add(randomPaillier, correction)
+		}(i)
 	}
-
+	wg.Wait()
 	return nil
 }
 
 func (paillierProtocol *BasicPaillier_PIR_Protocol) GenerateRequestFromQuery(requested_row int) (*pb.PIR_Request, error) {
 	// generate 256 ciphertext. All are encryptions of 0 except for the requested row
-	var err error
+	// var err error
 	num_rows := 1 << paillierProtocol.log2_num_rows
 	paillierProtocol.encrypted_query = make([]*big.Int, num_rows)
 
-	// var randomNumber *big.Int
-	// m := paillierProtocol.public_key.N
+	var randomPaillier *big.Int
+	Nsq := paillierProtocol.public_key.Nsq
+	N := paillierProtocol.public_key.N
 
 	for i := 0; i < num_rows; i++ {
 		bit := 0
 		if i == requested_row {
 			bit = 1
 		}
-		// normal way
-		paillierProtocol.encrypted_query[i], err = paillierProtocol.secret_key.PubKey.Encrypt(big.NewInt(int64(bit)))
+		// // normal way
+		// paillierProtocol.encrypted_query[i], err = paillierProtocol.secret_key.PubKey.Encrypt(big.NewInt(int64(bit)))
+		// if err != nil {
+		// 	return nil, err
+		// }
+
+		// Beck way
+		seededRand := rand.New(rand.NewSource(42 + int64(i)))
+		randomPaillier = new(big.Int).Rand(seededRand, Nsq)
+		decrypted, err := paillierProtocol.secret_key.Decrypt(randomPaillier)
 		if err != nil {
 			return nil, err
 		}
-
-		// 	// Beck way
-		// 	seededRand := rand.New(rand.NewSource(42 + int64(i)))
-		// 	randomNumber = new(big.Int).Rand(seededRand, m)
-		// 	// fmt.Println("Random number: ", randomNumber)
-		// 	decrypted, err := paillierProtocol.secret_key.Decrypt(randomNumber)
-		// 	if err != nil {
-		// 		return nil, err
-		// 	}
-		// 	// fmt.Println("Decrypted random number: ", decrypted)
-		// 	correction := big.NewInt(0)
-		// 	correction.Add(m, big.NewInt(int64(bit)))
-		// 	correction.Sub(correction, decrypted)
-		// 	if correction.Cmp(m) == 1 {
-		// 		correction.Sub(correction, m)
-		// 	}
-		// 	paillierProtocol.encrypted_query[i] = correction
-		// 	fmt.Println()
+		correction := big.NewInt(0)
+		correction.Add(N, big.NewInt(int64(bit)))
+		correction.Sub(correction, decrypted)
+		if correction.Cmp(N) == 1 {
+			correction.Sub(correction, N)
+		}
+		paillierProtocol.encrypted_query[i] = correction
 	}
 	return paillierProtocol.marshalRequestToPB()
 }

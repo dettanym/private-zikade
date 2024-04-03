@@ -197,3 +197,21 @@ func BenchmarkBasicPIR_with_Paillier_ProcessRequestAndReturnResponse(b *testing.
 		}
 	}
 }
+
+func Test_BeckTrick(t *testing.T) {
+	paillierProtocol := INSECURE_NewBasicPaillier_PIR_Protocol_INSECURE(4)
+	err := paillierProtocol.createPrivateKeyMaterial()
+	if err != nil {
+		t.Error("Error in creating private key material")
+	}
+	marshalled_request, err := paillierProtocol.GenerateRequestFromQuery(1)
+	if err != nil {
+		t.Error("Error in generating request from query")
+	}
+
+	err = paillierProtocol.unmarshallRequestFromPB(marshalled_request)
+	if err != nil {
+		t.Error("Error in unmarshalling request from PB")
+	}
+
+}
