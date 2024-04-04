@@ -310,7 +310,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 		var indicator_bits_slice []*rlwe.Ciphertext
 		if rlweStruct.log2_num_rows-log2_num_cts > 0 {
 
-			indicator_bits_slice, err = customExpand(evaluator, &encrypted_query[i], rlweStruct.log2_num_rows-log2_num_cts, 0)
+			indicator_bits_slice, err = customExpand(evaluator, rlweStruct.mode, &encrypted_query[i], rlweStruct.log2_num_rows-log2_num_cts, 0)
 			if err != nil {
 				return nil, err
 			}
