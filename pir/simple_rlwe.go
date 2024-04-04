@@ -18,6 +18,11 @@ type SimpleRLWE_PIR_Protocol struct {
 
 	parameters bgv.Parameters
 
+	// 0: basicrlwe
+	// 1: basicrlwe_whispir_3keys
+	// 2: basicrlwe_whispir_2keys
+	mode int
+
 	secret_key *rlwe.SecretKey
 
 	evaluation_keys      *rlwe.MemEvaluationKeySet
@@ -33,6 +38,29 @@ type SimpleRLWE_PIR_Protocol struct {
 func NewSimpleRLWE_PIR_Protocol(log2_num_rows int) *SimpleRLWE_PIR_Protocol {
 	rlweStruct := &SimpleRLWE_PIR_Protocol{
 		log2_num_rows: log2_num_rows,
+		mode:          0,
+	}
+	err := rlweStruct.generateParameters()
+	if err != nil {
+		return nil
+	}
+	pp := rlweStruct.parameters.PlaintextModulus()
+	rlweStruct.bytesPerCiphertextCoefficient = int(math.Floor(math.Log2(float64(pp)))) / 8
+	// TODO: Can we just get rid of this error by ensuring that this condition is always true when generating the parameters?
+	if rlweStruct.bytesPerCiphertextCoefficient > 8 {
+		fmt.Println("bytesPerCiphertextCoefficient > 8, Code can not handle coefficients larger than 64 bits")
+		return nil
+	}
+
+	rlweStruct.bytesPerCiphertext = rlweStruct.bytesPerCiphertextCoefficient * rlweStruct.parameters.N()
+	return rlweStruct
+}
+
+// Use by client to create a new PIR request
+func NewSimpleRLWE_PIR_Protocol_mode(log2_num_rows int, mode int) *SimpleRLWE_PIR_Protocol {
+	rlweStruct := &SimpleRLWE_PIR_Protocol{
+		log2_num_rows: log2_num_rows,
+		mode:          mode,
 	}
 	err := rlweStruct.generateParameters()
 	if err != nil {
@@ -199,7 +227,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) BytesArrayToPlaintext(byte_array []by
 	for j := 0; j < N; j++ {
 		the_bytes := make([]byte, 8)
 		for b := 0; b < rlweStruct.bytesPerCiphertextCoefficient; b++ {
-			if j*rlweStruct.bytesPerCiphertextCoefficient+b < end_index {
+			if start_index+j*rlweStruct.bytesPerCiphertextCoefficient+b < end_index {
 				the_bytes[b] = byte_array[start_index+j*rlweStruct.bytesPerCiphertextCoefficient+b]
 			}
 		}
@@ -282,7 +310,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 		var indicator_bits_slice []*rlwe.Ciphertext
 		if rlweStruct.log2_num_rows-log2_num_cts > 0 {
 
-			indicator_bits_slice, err = evaluator.Expand(&encrypted_query[i], rlweStruct.log2_num_rows-log2_num_cts, 0)
+			indicator_bits_slice, err = customExpand(evaluator, &encrypted_query[i], rlweStruct.log2_num_rows-log2_num_cts, 0)
 			if err != nil {
 				return nil, err
 			}

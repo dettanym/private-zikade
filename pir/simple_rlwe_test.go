@@ -69,8 +69,8 @@ func TestPlaintextToBytesArray(t *testing.T) {
 func TestPIR_ProcessRequestAndReturnResponse_Correctness(t *testing.T) {
 
 	// client query generation
-	log2_number_of_rows := 8
-	client_PIR_Protocol := NewSimpleRLWE_PIR_Protocol(log2_number_of_rows)
+	log2_number_of_rows := 4
+	client_PIR_Protocol := NewSimpleRLWE_PIR_Protocol_mode(log2_number_of_rows, 0)
 	err := client_PIR_Protocol.createPrivateKeyMaterial()
 	require.NoError(t, err)
 
@@ -109,13 +109,13 @@ func TestPIR_ProcessRequestAndReturnResponse_Correctness(t *testing.T) {
 func TestPIR_ProcessRequestAndReturnResponse_Correctness_LessThan256Rows(t *testing.T) {
 
 	// client query generation
-	log2_num_db_rows := 7
+	log2_num_db_rows := 4
 	log2_number_of_rows := 8
 
 	num_db_rows := 1 << log2_num_db_rows
 	number_of_rows := 1 << log2_number_of_rows
 
-	client_PIR_Protocol := NewSimpleRLWE_PIR_Protocol(log2_number_of_rows)
+	client_PIR_Protocol := NewSimpleRLWE_PIR_Protocol_mode(log2_number_of_rows, 1)
 	err := client_PIR_Protocol.createPrivateKeyMaterial()
 	require.NoError(t, err)
 
@@ -129,7 +129,7 @@ func TestPIR_ProcessRequestAndReturnResponse_Correctness_LessThan256Rows(t *test
 	db_element_size := 20 * 256
 	response := &pb.PIR_Response{}
 	{
-		server_PIR_Protocol := NewSimpleRLWE_PIR_Protocol(log2_number_of_rows)
+		server_PIR_Protocol := NewSimpleRLWE_PIR_Protocol_mode(log2_number_of_rows, 1)
 
 		for i := range db {
 			db[i] = make([]byte, db_element_size)
