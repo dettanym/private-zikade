@@ -297,6 +297,7 @@ func customExpand(eval *bgv.Evaluator, mode int, ctIn *rlwe.Ciphertext, logN, lo
 
 		half := n / gap
 
+		// TODO: parallelize this inner loop
 		for j := 0; j < (n+gap-1)/gap; j++ {
 
 			c0 := opOut[j]
@@ -344,6 +345,7 @@ func customExpand(eval *bgv.Evaluator, mode int, ctIn *rlwe.Ciphertext, logN, lo
 				ringQ.Add(c0.Value[1], tmp.Value[1], c0.Value[1])
 			}
 		}
+
 	}
 
 	for _, ct := range opOut {

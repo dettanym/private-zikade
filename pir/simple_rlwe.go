@@ -339,26 +339,25 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 		return nil, fmt.Errorf("initialize this struct with log2_num_rows as greater than or equal to the log of the number of rows in the DB")
 	}
 
-	// WARNING: Inner loop is not parallelizable
+	// TODO: parallelized both loops
+	// Note, there is a critical step in the inner loop
 	for k := 0; k < len(rlweStruct.response_ciphertexts); k++ {
-		// TODO: return last row by default
 		for i := 0; i < num_db_rows; i++ {
-			row_data_plaintext := rlweStruct.plaintextDB[i][k]
+
+			multiplied, err := evaluator.MulNew(indicator_bits[i], rlweStruct.plaintextDB[i][k])
+			if err != nil {
+				return nil, fmt.Errorf("MulNew failed. Check function description for conditions leading to errors. Error: %s", err)
+			}
 
 			// We accumulate the results in the first cipertext so we don't require the
 			// public key to create a new ciphertext
+			// critical part
 			if i == 0 {
-				tmp, err := evaluator.MulNew(indicator_bits[i], row_data_plaintext)
-				if err != nil {
-					return nil, fmt.Errorf("MulNew failed. Check function description for conditions leading to errors. Error: %s", err)
-				}
-				rlweStruct.response_ciphertexts[k] = *tmp
+				rlweStruct.response_ciphertexts[k] = *multiplied
 			} else {
-				err := evaluator.MulThenAdd(indicator_bits[i], row_data_plaintext, &rlweStruct.response_ciphertexts[k])
-				if err != nil {
-					return nil, fmt.Errorf("MulThenAdd failed. Check function description for conditions leading to errors. Error: %s", err)
-				}
+				evaluator.Add(&rlweStruct.response_ciphertexts[k], multiplied, &rlweStruct.response_ciphertexts[k])
 			}
+
 		}
 	}
 
