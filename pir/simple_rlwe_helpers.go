@@ -16,30 +16,21 @@ import (
 
 // From https://github.com/tuneinsight/lattigo/blob/master/schemes/bgv/examples_parameters.go
 func (rlweStruct *SimpleRLWE_PIR_Protocol) generateParameters() error { //
-
-	var BGVParamsN12QP109 bgv.ParametersLiteral
+	var pt_mod uint64
 	switch rlweStruct.mode {
 	case 0:
-		BGVParamsN12QP109 = bgv.ParametersLiteral{
-			LogN:             12,
-			LogQ:             []int{54},
-			LogP:             []int{55},
-			PlaintextModulus: 188417,
-		}
+		pt_mod = 40961 //188417
 	case 1:
-		BGVParamsN12QP109 = bgv.ParametersLiteral{
-			LogN:             12,
-			LogQ:             []int{54},
-			LogP:             []int{55},
-			PlaintextModulus: 40961,
-		}
+		pt_mod = 40961
 	case 2:
-		BGVParamsN12QP109 = bgv.ParametersLiteral{
-			LogN:             12,
-			LogQ:             []int{54},
-			LogP:             []int{55},
-			PlaintextModulus: 40961,
-		}
+		pt_mod = 40961
+	}
+
+	BGVParamsN12QP109 := bgv.ParametersLiteral{
+		LogN:             12,
+		LogQ:             []int{54},
+		LogP:             []int{55},
+		PlaintextModulus: pt_mod,
 	}
 
 	// Possible values for Plaintext Modulus:

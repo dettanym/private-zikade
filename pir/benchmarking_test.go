@@ -2,6 +2,7 @@ package pir
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"testing"
 	"time"
@@ -37,9 +38,8 @@ func getRLWEPIRResponseSize(resp *pb.PIR_Response) int {
 	return len(resp.Ciphertexts)
 }
 
-func end_to_end_Paillier_PIR(log_2_num_rows int, log_2_num_db_rows int) error {
+func end_to_end_Paillier_PIR(log_2_num_rows int, log_2_num_db_rows int, row_size int) error {
 
-	fmt.Println("BasicPaillier")
 	fmt.Println("- log_2_num_rows: ", log_2_num_rows)
 	fmt.Println("- log_2_num_db_rows: ", log_2_num_db_rows)
 
@@ -61,7 +61,7 @@ func end_to_end_Paillier_PIR(log_2_num_rows int, log_2_num_db_rows int) error {
 	// server
 	num_db_rows := 1 << log_2_num_db_rows
 	db := make([][]byte, num_db_rows)
-	db_element_size := 20 * 256
+	db_element_size := row_size
 
 	response := &pb.PIR_Response{}
 	{
@@ -103,10 +103,8 @@ func end_to_end_Paillier_PIR(log_2_num_rows int, log_2_num_db_rows int) error {
 	return nil
 }
 
-func end_to_end_RLWE_PIR(log2_number_of_rows int, log2_num_db_rows int, mode int) error {
+func end_to_end_RLWE_PIR(log2_number_of_rows int, log2_num_db_rows int, mode int, row_size int) error {
 
-	fmt.Println("BasicRLWE")
-	fmt.Println("- mode: ", mode)
 	fmt.Println("- log_2_num_rows: ", log2_number_of_rows)
 	fmt.Println("- log_2_num_db_rows: ", log2_num_db_rows)
 
@@ -130,7 +128,7 @@ func end_to_end_RLWE_PIR(log2_number_of_rows int, log2_num_db_rows int, mode int
 
 	// server
 	db := make([][]byte, num_db_rows)
-	db_element_size := 20 * 256
+	db_element_size := row_size
 	response := &pb.PIR_Response{}
 	{
 		server_PIR_Protocol := NewSimpleRLWE_PIR_Protocol_mode(log2_number_of_rows, mode)
@@ -172,12 +170,38 @@ func end_to_end_RLWE_PIR(log2_number_of_rows int, log2_num_db_rows int, mode int
 }
 
 func Test_PIR_for_Routing_Table(t *testing.T) {
+	row_size := 20 * 256
 	for log_2_db_rows := 4; log_2_db_rows <= 8; log_2_db_rows++ {
-		if end_to_end_Paillier_PIR(8, log_2_db_rows) != nil {
+		if end_to_end_Paillier_PIR(8, log_2_db_rows, row_size) != nil {
 			fmt.Println("- Error in PIR")
 		}
 		for mode := 0; mode <= 2; mode++ {
-			if err := end_to_end_RLWE_PIR(8, log_2_db_rows, mode); err != nil {
+			if err := end_to_end_RLWE_PIR(8, log_2_db_rows, mode, row_size); err != nil {
+				fmt.Println("- Error in PIR")
+				fmt.Println(err)
+			}
+		}
+	}
+}
+
+func Test_PIR_for_Provider_Routing(t *testing.T) {
+	for num_cids := 8192; num_cids < 100000; num_cids += 8192 {
+
+		log_2_db_rows := 12
+
+		const BINNING_CONSTANT = 1.001
+		// Assuming num_cids and log_2_db_rows are already defined variables
+		row_size := int(math.Ceil(BINNING_CONSTANT * float64(num_cids*81) / float64(uint64(1)<<log_2_db_rows)))
+
+		// fmt.Println("BasicPaillier")
+		// if end_to_end_Paillier_PIR(log_2_db_rows, log_2_db_rows, row_size) != nil {
+		// 	fmt.Println("- Error in PIR")
+		// }
+		for mode := 0; mode <= 2; mode++ {
+			fmt.Printf("BasicRLWE_%d\n", mode)
+			fmt.Println("- num_cids: ", num_cids)
+			fmt.Println("- row_size: ", row_size)
+			if err := end_to_end_RLWE_PIR(log_2_db_rows, log_2_db_rows, mode, row_size); err != nil {
 				fmt.Println("- Error in PIR")
 				fmt.Println(err)
 			}
