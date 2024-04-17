@@ -349,6 +349,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 	for k := 0; k < len(rlweStruct.response_ciphertexts); k++ {
 		products := make([]*rlwe.Ciphertext, num_db_rows)
 		var wg sync.WaitGroup
+		start := time.Now()
 
 		for i := 0; i < num_db_rows; i++ {
 			wg.Add(1)
@@ -363,7 +364,10 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 			}(i, k, evaluator.ShallowCopy())
 		}
 		wg.Wait()
+		duration := time.Since(start)
+		fmt.Println("- time elapsed for parallelized part, under k: ", k, "is: ", duration)
 
+		start = time.Now()
 		for i := 0; i < num_db_rows; i++ {
 			// We accumulate the results in the first cipertext so we don't require the
 			// public key to create a new ciphertext
@@ -377,6 +381,8 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 				}
 			}
 		}
+		duration = time.Since(start)
+		fmt.Println("- time elapsed for adding: under k: ", k, "is: ", duration)
 	}
 
 	response, err := rlweStruct.marshalResponseToPB()
