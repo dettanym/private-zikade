@@ -317,7 +317,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 				return nil, err
 			}
 			elapsed := time.Since(start_time)
-			fmt.Println("- server custom expansion time:", elapsed)
+			fmt.Println("- time elapsed for key expansion: \t\t\t\t\t\t\t", elapsed)
 
 		} else { // rlweStruct.log2_num_rows == log2_num_cts
 			indicator_bits_slice = []*rlwe.Ciphertext{&encrypted_query[i]}
@@ -325,14 +325,18 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 		indicator_bits = append(indicator_bits, indicator_bits_slice...)
 	}
 
+	start := time.Now()
 	err = rlweStruct.transformDBToPlaintextForm(database)
 	if err != nil {
 		return nil, err
 	}
+	duration := time.Since(start)
+	fmt.Println("- time elapsed for transformDBToPlaintextForm is: \t\t\t", duration)
 
 	num_db_rows := len(database)
 	num_rows := 1 << rlweStruct.log2_num_rows
 
+	start = time.Now()
 	// This if statement cause the algorithm to return the last row of the database,
 	// if the query is larger than the number of rows
 	if num_rows > num_db_rows {
@@ -345,6 +349,8 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 	} else if num_rows < num_db_rows {
 		return nil, fmt.Errorf("initialize this struct with log2_num_rows as greater than or equal to the log of the number of rows in the DB")
 	}
+	duration = time.Since(start)
+	fmt.Println("- time elapsed for evaluator.Add over indicator bits: is: \t", duration)
 
 	for k := 0; k < len(rlweStruct.response_ciphertexts); k++ {
 		products := make([]*rlwe.Ciphertext, num_db_rows)
