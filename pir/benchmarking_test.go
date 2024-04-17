@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"runtime"
 	"testing"
 	"time"
 
@@ -170,6 +171,9 @@ func end_to_end_RLWE_PIR(log2_number_of_rows int, log2_num_db_rows int, mode int
 }
 
 func Test_PIR_for_Routing_Table(t *testing.T) {
+	// ensures that all CPUs are used
+	fmt.Println(runtime.GOMAXPROCS(runtime.NumCPU()))
+
 	row_size := 20 * 256
 	for log_2_db_rows := 4; log_2_db_rows <= 8; log_2_db_rows++ {
 		if end_to_end_Paillier_PIR(8, log_2_db_rows, row_size) != nil {
@@ -185,6 +189,8 @@ func Test_PIR_for_Routing_Table(t *testing.T) {
 }
 
 func Test_PIR_for_Provider_Routing(t *testing.T) {
+	// ensures that all CPUs are used
+	fmt.Println(runtime.GOMAXPROCS(runtime.NumCPU()))
 	for num_cids := 8192; num_cids < 100000; num_cids += 8192 {
 
 		log_2_db_rows := 12
