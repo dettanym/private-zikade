@@ -4,6 +4,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
+	"sync"
+	"time"
 
 	"github.com/plprobelab/zikade/pb"
 	"github.com/tuneinsight/lattigo/v5/core/rlwe"
@@ -309,11 +311,13 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 	for i := range encrypted_query {
 		var indicator_bits_slice []*rlwe.Ciphertext
 		if rlweStruct.log2_num_rows-log2_num_cts > 0 {
-
+			start_time := time.Now()
 			indicator_bits_slice, err = customExpand(evaluator, rlweStruct.mode, &encrypted_query[i], rlweStruct.log2_num_rows-log2_num_cts, 0)
 			if err != nil {
 				return nil, err
 			}
+			elapsed := time.Since(start_time)
+			fmt.Println("- server custom expansion time:", elapsed)
 
 		} else { // rlweStruct.log2_num_rows == log2_num_cts
 			indicator_bits_slice = []*rlwe.Ciphertext{&encrypted_query[i]}
@@ -333,31 +337,45 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 	// if the query is larger than the number of rows
 	if num_rows > num_db_rows {
 		for j := num_db_rows; j < num_rows; j++ {
-			evaluator.Add(indicator_bits[num_db_rows-1], indicator_bits[j], indicator_bits[num_db_rows-1])
+			err := evaluator.Add(indicator_bits[num_db_rows-1], indicator_bits[j], indicator_bits[num_db_rows-1])
+			if err != nil {
+				return nil, err
+			}
 		}
 	} else if num_rows < num_db_rows {
 		return nil, fmt.Errorf("initialize this struct with log2_num_rows as greater than or equal to the log of the number of rows in the DB")
 	}
 
-	// TODO: parallelized both loops
-	// Note, there is a critical step in the inner loop
 	for k := 0; k < len(rlweStruct.response_ciphertexts); k++ {
+		products := make([]*rlwe.Ciphertext, num_db_rows)
+		var wg sync.WaitGroup
+
 		for i := 0; i < num_db_rows; i++ {
+			wg.Add(1)
+			go func(index int, k int, evaluator *bgv.Evaluator) error {
+				defer wg.Done()
+				product, err := evaluator.MulNew(indicator_bits[index], rlweStruct.plaintextDB[index][k])
+				if err != nil {
+					return fmt.Errorf("MulNew failed. Check function description for conditions leading to errors. Error: %s", err)
+				}
+				products[index] = product
+				return nil
+			}(i, k, evaluator.ShallowCopy())
+		}
+		wg.Wait()
 
-			multiplied, err := evaluator.MulNew(indicator_bits[i], rlweStruct.plaintextDB[i][k])
-			if err != nil {
-				return nil, fmt.Errorf("MulNew failed. Check function description for conditions leading to errors. Error: %s", err)
-			}
-
+		for i := 0; i < num_db_rows; i++ {
 			// We accumulate the results in the first cipertext so we don't require the
 			// public key to create a new ciphertext
 			// critical part
 			if i == 0 {
-				rlweStruct.response_ciphertexts[k] = *multiplied
+				rlweStruct.response_ciphertexts[k] = *products[i]
 			} else {
-				evaluator.Add(&rlweStruct.response_ciphertexts[k], multiplied, &rlweStruct.response_ciphertexts[k])
+				err := evaluator.Add(&rlweStruct.response_ciphertexts[k], products[i], &rlweStruct.response_ciphertexts[k])
+				if err != nil {
+					return nil, err
+				}
 			}
-
 		}
 	}
 
