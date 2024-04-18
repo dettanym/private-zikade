@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
-	"sync"
 	"time"
 
 	"github.com/plprobelab/zikade/pb"
@@ -352,44 +351,69 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 	duration = time.Since(start)
 	fmt.Println("- time elapsed for evaluator.Add over indicator bits: is: \t", duration)
 
+	start = time.Now()
 	for k := 0; k < len(rlweStruct.response_ciphertexts); k++ {
-		products := make([]*rlwe.Ciphertext, num_db_rows)
-		var wg sync.WaitGroup
-		start := time.Now()
-
 		for i := 0; i < num_db_rows; i++ {
-			wg.Add(1)
-			go func(index int, k int, evaluator *bgv.Evaluator) error {
-				defer wg.Done()
-				product, err := evaluator.MulNew(indicator_bits[index], rlweStruct.plaintextDB[index][k])
-				if err != nil {
-					return fmt.Errorf("MulNew failed. Check function description for conditions leading to errors. Error: %s", err)
-				}
-				products[index] = product
-				return nil
-			}(i, k, evaluator.ShallowCopy())
-		}
-		wg.Wait()
-		duration := time.Since(start)
-		fmt.Println("- time elapsed for parallelized part, under k: ", k, "is: ", duration)
 
-		start = time.Now()
-		for i := 0; i < num_db_rows; i++ {
+			multiplied, err := evaluator.MulNew(indicator_bits[i], rlweStruct.plaintextDB[i][k])
+			if err != nil {
+				return nil, fmt.Errorf("MulNew failed. Check function description for conditions leading to errors. Error: %s", err)
+			}
+
 			// We accumulate the results in the first cipertext so we don't require the
 			// public key to create a new ciphertext
 			// critical part
 			if i == 0 {
-				rlweStruct.response_ciphertexts[k] = *products[i]
+				rlweStruct.response_ciphertexts[k] = *multiplied
 			} else {
-				err := evaluator.Add(&rlweStruct.response_ciphertexts[k], products[i], &rlweStruct.response_ciphertexts[k])
+				err := evaluator.Add(&rlweStruct.response_ciphertexts[k], multiplied, &rlweStruct.response_ciphertexts[k])
 				if err != nil {
 					return nil, err
 				}
 			}
+
 		}
-		duration = time.Since(start)
-		fmt.Println("- time elapsed for adding: under k: ", k, "is: ", duration)
 	}
+	/*
+		for k := 0; k < len(rlweStruct.response_ciphertexts); k++ {
+			products := make([]*rlwe.Ciphertext, num_db_rows)
+			var wg sync.WaitGroup
+			start := time.Now()
+
+			for i := 0; i < num_db_rows; i++ {
+				wg.Add(1)
+				go func(index int, k int, evaluator *bgv.Evaluator) error {
+					defer wg.Done()
+					product, err := evaluator.MulNew(indicator_bits[index], rlweStruct.plaintextDB[index][k])
+					if err != nil {
+						return fmt.Errorf("MulNew failed. Check function description for conditions leading to errors. Error: %s", err)
+					}
+					products[index] = product
+					return nil
+				}(i, k, evaluator.ShallowCopy())
+			}
+			wg.Wait()
+			duration := time.Since(start)
+			fmt.Println("- time elapsed for parallelized part, under k: ", k, "is: ", duration)
+
+			start = time.Now()
+			for i := 0; i < num_db_rows; i++ {
+				// We accumulate the results in the first cipertext so we don't require the
+				// public key to create a new ciphertext
+				// critical part
+				if i == 0 {
+					rlweStruct.response_ciphertexts[k] = *products[i]
+				} else {
+					err := evaluator.Add(&rlweStruct.response_ciphertexts[k], products[i], &rlweStruct.response_ciphertexts[k])
+					if err != nil {
+						return nil, err
+					}
+				}
+			}
+			duration = time.Since(start)
+			fmt.Println("- time elapsed for adding: under k: ", k, "is: ", duration)
+		}
+	*/
 
 	response, err := rlweStruct.marshalResponseToPB()
 	if err != nil {
