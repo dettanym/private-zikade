@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 	"math/rand"
+	"sync"
 	"time"
 
 	"github.com/tuneinsight/lattigo/v5/ring"
@@ -279,16 +280,7 @@ func customExpand(eval *bgv.Evaluator, mode int, ctIn *rlwe.Ciphertext, logN, lo
 
 	gap := 1 << logGap
 
-	tmp, err := rlwe.NewCiphertextAtLevelFromPoly(level, []ring.Poly{eval.BuffCt.Value[0], eval.BuffCt.Value[1]})
-
-	// Sanity check, this error should not happen unless the
-	// evaluator's buffer thave been improperly tempered with.
-	if err != nil {
-		panic(err)
-	}
-
-	tmp.MetaData = ctIn.MetaData
-
+	var wg sync.WaitGroup
 	for i := 0; i < logN; i++ {
 
 		n := 1 << i
@@ -297,54 +289,75 @@ func customExpand(eval *bgv.Evaluator, mode int, ctIn *rlwe.Ciphertext, logN, lo
 
 		half := n / gap
 
-		// TODO: parallelize this inner loop
-		for j := 0; j < (n+gap-1)/gap; j++ {
+		// start := time.Now()
+		maxJ := (n + gap - 1) / gap
+		for j := 0; j < maxJ; j++ {
+			wg.Add(1)
 
-			c0 := opOut[j]
+			go func(j int, eval *bgv.Evaluator, galEl uint64, c0 *rlwe.Ciphertext) {
+				defer wg.Done()
 
-			// X -> X^{N/n + 1}
-			//[a, b, c, d] -> [a, -b, c, -d]
+				tmp, err := rlwe.NewCiphertextAtLevelFromPoly(level, []ring.Poly{eval.BuffCt.Value[0], eval.BuffCt.Value[1]})
 
-			switch mode {
-			case 0:
-				if err = eval.Automorphism(c0, galEl, tmp); err != nil {
-					return
+				// Sanity check, this error should not happen unless the
+				// evaluator's buffer thave been improperly tempered with.
+				if err != nil {
+					panic(err)
 				}
-			case 1:
-				if tmp, err = threeKeyAutomorphism(eval, c0, galEl); err != nil {
-					return
+
+				tmp.MetaData = ctIn.MetaData
+
+				// X -> X^{N/n + 1}
+				//[a, b, c, d] -> [a, -b, c, -d]
+
+				switch mode {
+				case 0:
+					if err = eval.Automorphism(c0, galEl, tmp); err != nil {
+						return
+					}
+				case 1:
+					if tmp, err = threeKeyAutomorphism(eval, c0, galEl); err != nil {
+						return
+					}
+
+				case 2:
+					if tmp, err = twoKeyAutomorphism(eval, c0, galEl); err != nil {
+						return
+					}
 				}
-			case 2:
-				if tmp, err = twoKeyAutomorphism(eval, c0, galEl); err != nil {
-					return
+
+				if j+half > 0 {
+
+					c1 := opOut[j].CopyNew()
+
+					// opOut[j] is only modified by the next two lines
+					// Zeroes odd coeffs: [a, b, c, d] + [a, -b, c, -d] -> [2a, 0, 2b, 0]
+					ringQ.Add(c0.Value[0], tmp.Value[0], c0.Value[0])
+					ringQ.Add(c0.Value[1], tmp.Value[1], c0.Value[1])
+
+					// compute the value for opOut[half + j]
+					// Zeroes even coeffs: [a, b, c, d] - [a, -b, c, -d] -> [0, 2b, 0, 2d]
+					ringQ.Sub(c1.Value[0], tmp.Value[0], c1.Value[0])
+					ringQ.Sub(c1.Value[1], tmp.Value[1], c1.Value[1])
+
+					// c1 * X^{-2^{i}}: [0, 2b, 0, 2d] * X^{-n} -> [2b, 0, 2d, 0]
+					ringQ.MulCoeffsMontgomery(c1.Value[0], xPow2[i], c1.Value[0])
+					ringQ.MulCoeffsMontgomery(c1.Value[1], xPow2[i], c1.Value[1])
+
+					opOut[j+half] = c1
+
+				} else {
+
+					// Zeroes odd coeffs: [a, b, c, d] + [a, -b, c, -d] -> [2a, 0, 2b, 0]
+					ringQ.Add(c0.Value[0], tmp.Value[0], c0.Value[0])
+					ringQ.Add(c0.Value[1], tmp.Value[1], c0.Value[1])
 				}
-			}
+			}(j, eval.ShallowCopy(), galEl, opOut[j])
 
-			if j+half > 0 {
-
-				c1 := opOut[j].CopyNew()
-
-				// Zeroes odd coeffs: [a, b, c, d] + [a, -b, c, -d] -> [2a, 0, 2b, 0]
-				ringQ.Add(c0.Value[0], tmp.Value[0], c0.Value[0])
-				ringQ.Add(c0.Value[1], tmp.Value[1], c0.Value[1])
-
-				// Zeroes even coeffs: [a, b, c, d] - [a, -b, c, -d] -> [0, 2b, 0, 2d]
-				ringQ.Sub(c1.Value[0], tmp.Value[0], c1.Value[0])
-				ringQ.Sub(c1.Value[1], tmp.Value[1], c1.Value[1])
-
-				// c1 * X^{-2^{i}}: [0, 2b, 0, 2d] * X^{-n} -> [2b, 0, 2d, 0]
-				ringQ.MulCoeffsMontgomery(c1.Value[0], xPow2[i], c1.Value[0])
-				ringQ.MulCoeffsMontgomery(c1.Value[1], xPow2[i], c1.Value[1])
-
-				opOut[j+half] = c1
-
-			} else {
-
-				// Zeroes odd coeffs: [a, b, c, d] + [a, -b, c, -d] -> [2a, 0, 2b, 0]
-				ringQ.Add(c0.Value[0], tmp.Value[0], c0.Value[0])
-				ringQ.Add(c0.Value[1], tmp.Value[1], c0.Value[1])
-			}
 		}
+		wg.Wait()
+		// duration := time.Since(start)
+		// fmt.Println(" - custom expansion: for loop: i", i, " maxJ: ", maxJ, " takes:\t\t\t", duration)
 
 	}
 
