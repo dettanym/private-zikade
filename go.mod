@@ -33,6 +33,7 @@ require (
 
 require (
 	github.com/ipfs/go-ds-leveldb v0.5.0
+	github.com/lucasmenendez/gopaillier v0.1.3
 	github.com/plprobelab/go-kademlia v0.0.0-unpublished
 	github.com/tuneinsight/lattigo/v5 v5.0.2
 )
@@ -82,7 +83,6 @@ require (
 	github.com/libp2p/go-netroute v0.2.1 // indirect
 	github.com/libp2p/go-reuseport v0.4.0 // indirect
 	github.com/libp2p/go-yamux/v4 v4.0.1 // indirect
-	github.com/lucasmenendez/gopaillier v0.1.3 // indirect
 	github.com/marten-seemann/tcp v0.0.0-20210406111302-dfbc87cc63fd // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
