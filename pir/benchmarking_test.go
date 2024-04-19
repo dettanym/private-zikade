@@ -73,24 +73,11 @@ func end_to_end_PIR(b *testing.B, log2_number_of_rows int, log2_num_db_rows int,
 		r := &results{seed: rand.NewSource(int64(i))}
 
 		r.pirRequest = r.Client_PIR_Request(b, client_PIR_Protocol, log2_number_of_rows)
-		ourResults[i] = r
-	}
-
-	// run them against the server
-	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < runs; i++ {
-		r := ourResults[i]
 		r.pirResponse = r.Server_PIR(b, log2_number_of_rows, mode, r.pirRequest, db)
-	}
-	b.ReportAllocs()
-	b.ResetTimer()
-
-	// process response
-	for i := 0; i < runs; i++ {
-		r := ourResults[i]
 		r.Client_PIR_Response(b, client_PIR_Protocol, log2_num_db_rows, row_size, db)
 		r.setReqResLen(mode)
+
+		ourResults[i] = r
 	}
 
 	printStats(ourResults)
@@ -221,5 +208,5 @@ func printStats(ourResults []*results) {
 	avgReqLen = avgReqLen / float64(runs)
 	avgResLen = avgResLen / float64(runs)
 	avgServerTime = float64(int64(int(avgServerTime) / runs))
-	fmt.Printf("Averaged results over %d runs: Req Length %f, Response Length %f, Server time %f\n", runs, avgReqLen, avgResLen, avgServerTime)
+	fmt.Printf("Averaged results over %d runs: Req Length %f, Response Length %f, Server time (ms)%f\n", runs, avgReqLen, avgResLen, avgServerTime)
 }
