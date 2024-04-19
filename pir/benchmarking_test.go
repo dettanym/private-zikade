@@ -2,12 +2,14 @@ package pir
 
 import (
 	"fmt"
+	"github.com/gocarina/gocsv"
 	"github.com/plprobelab/zikade/pb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gonum.org/v1/gonum/stat"
 	"math"
 	"math/rand"
+	"os"
 	"runtime"
 	"testing"
 	"time"
@@ -41,7 +43,7 @@ func getRLWEPIRResponseSize(resp *pb.PIR_Response) int {
 	return len(resp.Ciphertexts)
 }
 
-func end_to_end_PIR(b *testing.B, log2_number_of_rows int, log2_num_db_rows int, mode int, row_size int) {
+func (s *resultsStats) end_to_end_PIR(b *testing.B, log2_number_of_rows int, log2_num_db_rows int, mode int, row_size int) {
 
 	fmt.Println("- log_2_num_rows: ", log2_number_of_rows)
 	fmt.Println("- log_2_num_db_rows: ", log2_num_db_rows)
@@ -66,9 +68,10 @@ func end_to_end_PIR(b *testing.B, log2_number_of_rows int, log2_num_db_rows int,
 	err := client_PIR_Protocol.CreatePrivateKeyMaterial()
 	assert.NoError(b, err)
 
-	runs := 2
 	// prepare requests
+	runs := s.Runs
 	ourResults := make([]*results, runs)
+	s.SeedMin = 0
 	for i := 0; i < runs; i++ {
 		r := &results{seed: rand.NewSource(int64(i))}
 
@@ -79,8 +82,9 @@ func end_to_end_PIR(b *testing.B, log2_number_of_rows int, log2_num_db_rows int,
 
 		ourResults[i] = r
 	}
+	s.SeedMax = runs - 1
+	s.setStats(ourResults)
 
-	printStats(ourResults)
 }
 
 func (r *results) Client_PIR_Request(b *testing.B, client_PIR_Protocol PIR_Protocol, log2_number_of_rows int) *pb.PIR_Request {
@@ -147,6 +151,10 @@ func Benchmark_PIR_for_Routing_Table(b *testing.B) {
 	fmt.Println(runtime.GOMAXPROCS(runtime.NumCPU()))
 
 	row_size := 20 * 256
+
+	runs := 10 // b.N
+	peerRoutingResultsStats := make([]resultsStats, runs)
+
 	modes := []int{Basic_Paillier, RLWE_All_Keys, RLWE_Whispir_2_Keys, RLWE_Whispir_3_Keys}
 	for log_2_db_rows := 4; log_2_db_rows <= 8; log_2_db_rows++ {
 		for _, mode := range modes {
@@ -155,7 +163,14 @@ func Benchmark_PIR_for_Routing_Table(b *testing.B) {
 				"RLWE_All_Keys = ", RLWE_All_Keys,
 				"RLWE_Whispir_2_Keys = ", RLWE_Whispir_2_Keys,
 				"RLWE_Whispir_3_Keys = ", RLWE_Whispir_3_Keys)
-			end_to_end_PIR(b, 8, log_2_db_rows, mode, row_size)
+			s := resultsStats{
+				Num_rows: 1 << log_2_db_rows,
+				Mode:     mode,
+				Runs:     runs,
+			}
+
+			s.end_to_end_PIR(b, 8, log_2_db_rows, mode, row_size)
+			peerRoutingResultsStats = append(peerRoutingResultsStats, s)
 		}
 	}
 }
@@ -163,6 +178,10 @@ func Benchmark_PIR_for_Routing_Table(b *testing.B) {
 func Benchmark_PIR_for_Provider_Routing(b *testing.B) {
 	// ensures that all CPUs are used
 	fmt.Println(runtime.GOMAXPROCS(runtime.NumCPU()))
+
+	var providerRoutingResultsStats []resultsStats
+	runs := 10 // b.N
+
 	for num_cids := 8192; num_cids < 100000; num_cids += 8192 {
 
 		log_2_db_rows := 12
@@ -178,10 +197,20 @@ func Benchmark_PIR_for_Provider_Routing(b *testing.B) {
 				"RLWE_Whispir_2_Keys = ", RLWE_Whispir_2_Keys,
 				"RLWE_Whispir_3_Keys = ", RLWE_Whispir_3_Keys)
 			fmt.Println("- num_cids: ", num_cids)
-			fmt.Println("- row_size: ", row_size)
-			end_to_end_PIR(b, log_2_db_rows, log_2_db_rows, mode, row_size)
+			fmt.Println("- Row_size: ", row_size)
+			s := resultsStats{
+				Num_rows: num_cids,
+				Row_size: row_size,
+				Mode:     mode,
+				Runs:     runs,
+			}
+			s.end_to_end_PIR(b, log_2_db_rows, log_2_db_rows, mode, row_size)
+			providerRoutingResultsStats = append(providerRoutingResultsStats, s)
+
 		}
 	}
+	err := writeStatsToCSV(providerRoutingResultsStats, "providerRouting-")
+	require.NoError(b, err)
 }
 
 type results struct {
@@ -194,7 +223,7 @@ type results struct {
 	pirResponse   *pb.PIR_Response
 }
 
-func printStats(ourResults []*results) {
+func (s *resultsStats) setStats(ourResults []*results) {
 	runs := len(ourResults)
 	var reqLens, resLens, runtimes []float64
 	reqLens = make([]float64, runs)
@@ -207,9 +236,39 @@ func printStats(ourResults []*results) {
 		runtimes[i] = float64(res.serverRuntime)
 	}
 
-	avgReqLen, _ := stat.MeanStdDev(reqLens, nil)
-	avgResLen, _ := stat.MeanStdDev(resLens, nil)
-	avgServerTime, stddevRuntimes := stat.MeanStdDev(runtimes, nil)
-	fmt.Printf("Averaged results over %d runs: Req Length %f(B), Response Length %f(B), Server time (ms)%f\n", runs, avgReqLen, avgResLen, avgServerTime)
-	fmt.Printf("Stddev of server time (ms) %f\n", stddevRuntimes)
+	s.ReqLenMean, _ = stat.MeanStdDev(reqLens, nil)
+	s.ResLenMean, _ = stat.MeanStdDev(resLens, nil)
+	s.ServerRuntimeMean, s.ServerRuntimeStddev = stat.MeanStdDev(runtimes, nil)
+	fmt.Printf("Averaged results over %d Runs: Req Length %f(B), Response Length %f(B), Server time (ms)%f\n", runs, s.ReqLenMean, s.ResLenMean, s.ServerRuntimeMean)
+	fmt.Printf("Stddev of server time (ms) %f\n", s.ServerRuntimeStddev)
+}
+
+func writeStatsToCSV(arr []resultsStats, experimentName string) error {
+	timestamp := time.Now().Format(time.DateTime)
+	filename := experimentName + timestamp + ".csv"
+	statsFile, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, os.ModePerm)
+	if err != nil {
+		return err
+	}
+
+	err = gocsv.MarshalFile(&arr, statsFile) // Use this to save the CSV back to the file
+	if err != nil {
+		return err
+	}
+
+	return statsFile.Close()
+}
+
+type resultsStats struct {
+	Mode     int `csv:"Mode"`
+	Num_rows int `csv:"Num_rows"`
+	Row_size int `csv:"Row_size(Bytes)"`
+	Runs     int `csv:"Runs"`
+	SeedMin  int `csv:"SeedMin"`
+	SeedMax  int `csv:"SeedMax"`
+
+	ReqLenMean          float64 `csv:"ReqLenMean(Bytes)"`
+	ResLenMean          float64 `csv:"ResLenMean(Bytes)"`
+	ServerRuntimeMean   float64 `csv:"ServerRuntimeMean(ms)"`
+	ServerRuntimeStddev float64 `csv:"ServerRuntimeStddev(ms)"`
 }

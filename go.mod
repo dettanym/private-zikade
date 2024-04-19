@@ -32,6 +32,7 @@ require (
 )
 
 require (
+	github.com/gocarina/gocsv v0.0.0-20231116093920-b87c2d0e983a
 	github.com/ipfs/go-ds-leveldb v0.5.0
 	github.com/lucasmenendez/gopaillier v0.1.3
 	github.com/plprobelab/go-kademlia v0.0.0-unpublished
