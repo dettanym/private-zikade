@@ -12,6 +12,12 @@ import (
 	"github.com/tuneinsight/lattigo/v5/utils/structs"
 )
 
+const (
+	RLWE_All_Keys       int = 0
+	RLWE_Whispir_3_Keys     = 3
+	RLWE_Whispir_2_Keys     = 2
+)
+
 type SimpleRLWE_PIR_Protocol struct {
 	PIR_Protocol
 
@@ -19,9 +25,7 @@ type SimpleRLWE_PIR_Protocol struct {
 
 	parameters bgv.Parameters
 
-	// 0: basicrlwe
-	// 1: basicrlwe_whispir_3keys
-	// 2: basicrlwe_whispir_2keys
+	// See the const above
 	mode int
 
 	secret_key *rlwe.SecretKey

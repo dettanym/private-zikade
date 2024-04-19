@@ -11,6 +11,10 @@ import (
 	"github.com/plprobelab/zikade/pb"
 )
 
+const (
+	Basic_Paillier int = 43
+)
+
 type BasicPaillier_PIR_Protocol struct {
 	PIR_Protocol
 

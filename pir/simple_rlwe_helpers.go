@@ -18,14 +18,16 @@ import (
 // From https://github.com/tuneinsight/lattigo/blob/master/schemes/bgv/examples_parameters.go
 func (rlweStruct *SimpleRLWE_PIR_Protocol) generateParameters() error { //
 	var pt_mod uint64
-	switch rlweStruct.mode {
-	case 0:
-		pt_mod = 40961 //188417
-	case 1:
-		pt_mod = 40961
-	case 2:
-		pt_mod = 40961
-	}
+	pt_mod = 40961
+	//switch rlweStruct.mode {
+	//case RLWE_All_Keys:
+	//	pt_mod = 40961 //188417
+	//case RLWE_Whispir_2_Keys:
+	//	pt_mod = 40961
+	//case RLWE_Whispir_3_Keys:
+	//	pt_mod = 40961
+	//
+	//}
 
 	BGVParamsN12QP109 := bgv.ParametersLiteral{
 		LogN:             12,
@@ -73,11 +75,11 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) generateEvaluationKeys(log2_bits_per_
 	kgen := rlwe.NewKeyGenerator(rlweStruct.parameters)
 
 	var gal_keys []*rlwe.GaloisKey
-	if rlweStruct.mode == 0 {
+	if rlweStruct.mode == RLWE_All_Keys {
 		gal_keys = kgen.GenGaloisKeysNew(rlwe.GaloisElementsForExpand(rlweStruct.parameters, log2_bits_per_ct), rlweStruct.secret_key)
-	} else if rlweStruct.mode == 1 {
+	} else if rlweStruct.mode == RLWE_Whispir_3_Keys {
 		gal_keys = kgen.GenGaloisKeysNew([]uint64{3, 5, 1167}, rlweStruct.secret_key)
-	} else if rlweStruct.mode == 2 {
+	} else if rlweStruct.mode == RLWE_Whispir_2_Keys {
 		gal_keys = kgen.GenGaloisKeysNew([]uint64{3, 1173}, rlweStruct.secret_key)
 	}
 
@@ -311,16 +313,15 @@ func customExpand(eval *bgv.Evaluator, mode int, ctIn *rlwe.Ciphertext, logN, lo
 				//[a, b, c, d] -> [a, -b, c, -d]
 
 				switch mode {
-				case 0:
+				case RLWE_All_Keys:
 					if err = eval.Automorphism(c0, galEl, tmp); err != nil {
 						return
 					}
-				case 1:
+				case RLWE_Whispir_3_Keys:
 					if tmp, err = threeKeyAutomorphism(eval, c0, galEl); err != nil {
 						return
 					}
-
-				case 2:
+				case RLWE_Whispir_2_Keys:
 					if tmp, err = twoKeyAutomorphism(eval, c0, galEl); err != nil {
 						return
 					}
