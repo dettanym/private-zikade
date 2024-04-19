@@ -2,15 +2,15 @@ package pir
 
 import (
 	"fmt"
+	"github.com/plprobelab/zikade/pb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gonum.org/v1/gonum/stat"
 	"math"
 	"math/rand"
 	"runtime"
 	"testing"
 	"time"
-
-	"github.com/plprobelab/zikade/pb"
 )
 
 func getPaillierPIRRequestSize(req *pb.PIR_Request) int {
@@ -195,18 +195,21 @@ type results struct {
 }
 
 func printStats(ourResults []*results) {
-	var avgReqLen float64
-	var avgResLen float64
-	var avgServerTime float64
 	runs := len(ourResults)
-	for _, res := range ourResults {
+	var reqLens, resLens, runtimes []float64
+	reqLens = make([]float64, runs)
+	resLens = make([]float64, runs)
+	runtimes = make([]float64, runs)
+	for i, res := range ourResults {
 		// print("\n ", i, " ", res.requestLen, " ", res.responseLen, " ", res.serverRuntime, "\n")
-		avgReqLen += float64(res.requestLen)
-		avgResLen += float64(res.responseLen)
-		avgServerTime += float64(res.serverRuntime)
+		reqLens[i] = float64(res.requestLen)
+		resLens[i] = float64(res.responseLen)
+		runtimes[i] = float64(res.serverRuntime)
 	}
-	avgReqLen = avgReqLen / float64(runs)
-	avgResLen = avgResLen / float64(runs)
-	avgServerTime = float64(int64(int(avgServerTime) / runs))
-	fmt.Printf("Averaged results over %d runs: Req Length %f, Response Length %f, Server time (ms)%f\n", runs, avgReqLen, avgResLen, avgServerTime)
+
+	avgReqLen, _ := stat.MeanStdDev(reqLens, nil)
+	avgResLen, _ := stat.MeanStdDev(resLens, nil)
+	avgServerTime, stddevRuntimes := stat.MeanStdDev(runtimes, nil)
+	fmt.Printf("Averaged results over %d runs: Req Length %f(B), Response Length %f(B), Server time (ms)%f\n", runs, avgReqLen, avgResLen, avgServerTime)
+	fmt.Printf("Stddev of server time (ms) %f\n", stddevRuntimes)
 }

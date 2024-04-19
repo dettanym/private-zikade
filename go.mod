@@ -36,6 +36,7 @@ require (
 	github.com/lucasmenendez/gopaillier v0.1.3
 	github.com/plprobelab/go-kademlia v0.0.0-unpublished
 	github.com/tuneinsight/lattigo/v5 v5.0.2
+	gonum.org/v1/gonum v0.11.0
 )
 
 require (
