@@ -2,17 +2,17 @@ package pir
 
 import (
 	"fmt"
-	"github.com/gocarina/gocsv"
-	"github.com/plprobelab/zikade/pb"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"gonum.org/v1/gonum/stat"
-	"math"
 	"math/rand"
 	"os"
 	"runtime"
 	"testing"
 	"time"
+
+	"github.com/gocarina/gocsv"
+	"github.com/plprobelab/zikade/pb"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gonum.org/v1/gonum/stat"
 )
 
 func getPaillierPIRRequestSize(req *pb.PIR_Request) int {
@@ -182,13 +182,39 @@ func Benchmark_PIR_for_Provider_Routing(b *testing.B) {
 	var providerRoutingResultsStats []resultsStats
 	runs := 10 // b.N
 
+	// These numbers are derived using the script
+	maxBinLoad := map[int]int{
+		8192:   17,
+		16384:  22,
+		24576:  27,
+		32768:  32,
+		40960:  35,
+		49152:  39,
+		57344:  45,
+		65536:  49,
+		73728:  50,
+		81920:  54,
+		90112:  57,
+		98304:  62,
+		106496: 65,
+		114688: 70,
+		122880: 73,
+		131072: 73,
+		139264: 77,
+		147456: 80,
+		155648: 82,
+		163840: 85,
+		172032: 91,
+		180224: 94,
+		188416: 95,
+		196608: 99,
+	}
+
 	for num_cids := 8192; num_cids < 100000; num_cids += 8192 {
 
 		log_2_db_rows := 12
 
-		const BINNING_CONSTANT = 1.001
-		// Assuming num_cids and log_2_db_rows are already defined variables
-		row_size := int(math.Ceil(BINNING_CONSTANT * float64(num_cids*81) / float64(uint64(1)<<log_2_db_rows)))
+		row_size := maxBinLoad[num_cids] + 2 // Adding 2, just to be safe
 
 		modes := []int{RLWE_All_Keys, RLWE_Whispir_2_Keys, RLWE_Whispir_3_Keys}
 		for _, mode := range modes {
