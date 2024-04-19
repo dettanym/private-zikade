@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/plprobelab/zikade/pir"
 	"github.com/plprobelab/zikade/private_routing"
 	"reflect"
 	"strconv"
@@ -1507,7 +1508,8 @@ func TestDHT_handlePrivateFindPeer(t *testing.T) {
 	targetKey := kadt.PeerID(keyBytes).Key()
 	serverKey := kadt.PeerID(serverPeer).Key()
 
-	pirClientPeerRouting := private_routing.NewPirClientPeerRouting()
+	mode := pir.RLWE_Whispir_3_Keys
+	pirClientPeerRouting := private_routing.NewPirClientPeerRouting(mode)
 	pirRequestCloserPeers, err := pirClientPeerRouting.GenerateRequest(targetKey, serverKey)
 	require.NoError(t, err)
 
@@ -1553,15 +1555,16 @@ func TestDHT_handlePrivateGetProviders(t *testing.T) {
 	targetKey := kadt.PeerID(keyBytes).Key()
 	serverKey := kadt.PeerID(queryingPeer).Key()
 
-	pirClientPeerRouting := private_routing.NewPirClientPeerRouting()
+	mode := pir.RLWE_Whispir_3_Keys
+	pirClientPeerRouting := private_routing.NewPirClientPeerRouting(mode)
 	pirRequestCloserPeers, err := pirClientPeerRouting.GenerateRequest(targetKey, serverKey)
 	require.NoError(t, err)
 
 	log2_num_records := 10
 	be, providers, cids := createProviders(t, d, 1<<log2_num_records)
-	log2_num_Buckets := 5
+	log2_num_Buckets := 8
 	var lookupFileCID = cids[0]
-	pirClientProviderRouting := private_routing.NewPirClientProviderRouting(log2_num_Buckets)
+	pirClientProviderRouting := private_routing.NewPirClientProviderRouting(log2_num_Buckets, mode)
 	pirRequestProviderPeers, err := pirClientProviderRouting.GenerateRequest(lookupFileCID)
 	require.NoError(t, err)
 
@@ -1603,7 +1606,8 @@ func BenchmarkDHT_PrivateFindPeer(b *testing.B) {
 	runs := 100
 	ourResults := make([]results, runs)
 
-	pirClient := private_routing.NewPirClientPeerRouting()
+	mode := pir.RLWE_Whispir_3_Keys
+	pirClient := private_routing.NewPirClientPeerRouting(mode)
 
 	// build requests
 	reqs := make([]*pb.Message, runs)
