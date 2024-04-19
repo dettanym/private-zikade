@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 	"math/rand"
+	"time"
 
 	"sync"
 
@@ -213,10 +214,13 @@ func (paillierProtocol *BasicPaillier_PIR_Protocol) ProcessRequestAndReturnRespo
 		return nil, err
 	}
 
+	start := time.Now()
 	err = paillierProtocol.transformDBToPlaintextForm(database)
 	if err != nil {
 		return nil, err
 	}
+	duration := time.Since(start)
+	fmt.Println("- time elapsed for transformDBToPlaintextForm is: \t\t\t", duration)
 
 	// access encrypted query and validate its length
 	encrypted_query := paillierProtocol.encrypted_query
@@ -225,6 +229,7 @@ func (paillierProtocol *BasicPaillier_PIR_Protocol) ProcessRequestAndReturnRespo
 	num_db_rows := len(database)
 	num_rows := 1 << paillierProtocol.log2_num_rows
 
+	start = time.Now()
 	if num_rows > num_db_rows {
 		for j := num_db_rows; j < num_rows; j++ {
 			encrypted_query[num_db_rows-1] = paillierProtocol.public_key.AddEncrypted(encrypted_query[num_db_rows-1], encrypted_query[j])
@@ -232,6 +237,8 @@ func (paillierProtocol *BasicPaillier_PIR_Protocol) ProcessRequestAndReturnRespo
 	} else if num_rows < num_db_rows {
 		return nil, fmt.Errorf("initialize this struct with log2_num_rows as greater than or equal to the log of the number of rows in the DB")
 	}
+	duration = time.Since(start)
+	fmt.Println("- time elapsed for public_key.AddEncrypted: is: \t", duration)
 
 	var wg sync.WaitGroup
 	var mu sync.Mutex
