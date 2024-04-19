@@ -161,7 +161,7 @@ func Benchmark_PIR_for_Routing_Table(b *testing.B) {
 
 	row_size := 20 * 256
 	modes := []int{Basic_Paillier, RLWE_All_Keys, RLWE_Whispir_2_Keys, RLWE_Whispir_3_Keys}
-	for log_2_db_rows := 4; log_2_db_rows <= 4; log_2_db_rows++ {
+	for log_2_db_rows := 4; log_2_db_rows <= 8; log_2_db_rows++ {
 		for _, mode := range modes {
 			fmt.Println("---- mode: ", mode, "Legend:",
 				"Paillier = ", Basic_Paillier,
@@ -176,7 +176,7 @@ func Benchmark_PIR_for_Routing_Table(b *testing.B) {
 func Benchmark_PIR_for_Provider_Routing(b *testing.B) {
 	// ensures that all CPUs are used
 	fmt.Println(runtime.GOMAXPROCS(runtime.NumCPU()))
-	for num_cids := 8192; num_cids < 10000; num_cids += 8192 {
+	for num_cids := 8192; num_cids < 100000; num_cids += 8192 {
 
 		log_2_db_rows := 12
 
