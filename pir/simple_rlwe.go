@@ -78,7 +78,7 @@ func NewSimpleRLWE_PIR_Protocol_mode(log2_num_rows int, mode int) *SimpleRLWE_PI
 	return rlweStruct
 }
 
-func (rlweStruct *SimpleRLWE_PIR_Protocol) createPrivateKeyMaterial() error {
+func (rlweStruct *SimpleRLWE_PIR_Protocol) CreatePrivateKeyMaterial() error {
 	keygen := rlwe.NewKeyGenerator(rlweStruct.parameters)
 	rlweStruct.secret_key = keygen.GenSecretKeyNew()
 	return nil
@@ -198,7 +198,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) GenerateRequestFromQuery(requested_ro
 		plaintexts[i] = query_plaintext
 	}
 
-	err = rlweStruct.createPrivateKeyMaterial()
+	err = rlweStruct.CreatePrivateKeyMaterial()
 	if err != nil {
 		return nil, err
 	}

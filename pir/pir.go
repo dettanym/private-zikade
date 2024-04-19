@@ -7,6 +7,7 @@ type PIR_Protocol interface {
 	GenerateRequestFromQuery(int) (*pb.PIR_Request, error)
 	ProcessResponseToPlaintext(res *pb.PIR_Response) ([]byte, error)
 
+	CreatePrivateKeyMaterial() error
 	marshalRequestToPB() (*pb.PIR_Request, error)
 	unmarshallRequestFromPB(req *pb.PIR_Request) error
 	marshalResponseToPB() (*pb.PIR_Response, error)

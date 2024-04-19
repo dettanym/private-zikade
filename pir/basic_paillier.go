@@ -65,7 +65,7 @@ func unmarshalPaillierPublicKeyFromBytes(public_key_bytes *pb.Paillier_Public_Ke
 	return &paillier.PublicKey{N: N, G: G, Nsq: Nsq, Len: len}
 }
 
-func (paillierProtocol *BasicPaillier_PIR_Protocol) createPrivateKeyMaterial() error {
+func (paillierProtocol *BasicPaillier_PIR_Protocol) CreatePrivateKeyMaterial() error {
 	var key, _ = paillier.NewKeys(paillierProtocol.pailler_bitlength)
 	paillierProtocol.secret_key = key
 

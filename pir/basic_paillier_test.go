@@ -31,7 +31,7 @@ func TestBasicPIR_with_Paillier_marshal_and_unmarshal_public_key(t *testing.T) {
 func TestBasicPIR_with_Paillier_KeyGen(t *testing.T) {
 	log_2_num_rows := 8
 	pir_protocol := NewBasicPaillier_PIR_Protocol(log_2_num_rows)
-	err := pir_protocol.createPrivateKeyMaterial()
+	err := pir_protocol.CreatePrivateKeyMaterial()
 	if err != nil {
 		t.Error("Error in creating private key material")
 	}
@@ -40,7 +40,7 @@ func TestBasicPIR_with_Paillier_KeyGen(t *testing.T) {
 func TestBasicPIR_with_Paillier_MarshalRequestToPB(t *testing.T) {
 	log_2_num_rows := 8
 	pir_protocol := NewBasicPaillier_PIR_Protocol(log_2_num_rows)
-	pir_protocol.createPrivateKeyMaterial()
+	pir_protocol.CreatePrivateKeyMaterial()
 	_, err := pir_protocol.marshalRequestToPB()
 	if err != nil {
 		t.Error("Error in marshalling request to PB")
@@ -50,7 +50,7 @@ func TestBasicPIR_with_Paillier_MarshalRequestToPB(t *testing.T) {
 func TestBasicPIR_with_Paillier_UnmarshalRequestFromPB(t *testing.T) {
 	log_2_num_rows := 8
 	pir_protocol := INSECURE_NewBasicPaillier_PIR_Protocol_INSECURE(log_2_num_rows)
-	pir_protocol.createPrivateKeyMaterial()
+	pir_protocol.CreatePrivateKeyMaterial()
 	seed := rand.NewSource(time.Now().UnixNano())
 	random_query := rand.New(seed).Intn(1 << log_2_num_rows)
 	marshalled_request, err := pir_protocol.GenerateRequestFromQuery(random_query)
@@ -76,7 +76,7 @@ func TestBasicPIR_with_Paillier_UnmarshalRequestFromPB(t *testing.T) {
 func TestBasicPIR_with_Paillier_Gen_Query(t *testing.T) {
 	log_2_num_rows := 8
 	pir_protocol := INSECURE_NewBasicPaillier_PIR_Protocol_INSECURE(log_2_num_rows)
-	err := pir_protocol.createPrivateKeyMaterial()
+	err := pir_protocol.CreatePrivateKeyMaterial()
 	if err != nil {
 		t.Error("Error in creating private key material")
 	}
@@ -90,7 +90,7 @@ func TestBasicPIR_with_Paillier_Gen_Query(t *testing.T) {
 func TestBasicPIR_with_Paillier_ProcessRequestAndReturnResponse(t *testing.T) {
 	log_2_num_rows := 5
 	client_PIR_Protocol := INSECURE_NewBasicPaillier_PIR_Protocol_INSECURE(log_2_num_rows)
-	err := client_PIR_Protocol.createPrivateKeyMaterial()
+	err := client_PIR_Protocol.CreatePrivateKeyMaterial()
 	if err != nil {
 		t.Error("Error in creating private key material")
 	}
@@ -144,7 +144,7 @@ func TestBasicPIR_with_Paillier_ProcessRequestAndReturnResponse(t *testing.T) {
 func BenchmarkBasicPIR_with_Paillier_ProcessRequestAndReturnResponse(b *testing.B) {
 	log_2_num_rows := 4
 	client_PIR_Protocol := NewBasicPaillier_PIR_Protocol(log_2_num_rows)
-	err := client_PIR_Protocol.createPrivateKeyMaterial()
+	err := client_PIR_Protocol.CreatePrivateKeyMaterial()
 	if err != nil {
 		b.Error("Error in creating private key material")
 	}
@@ -200,7 +200,7 @@ func BenchmarkBasicPIR_with_Paillier_ProcessRequestAndReturnResponse(b *testing.
 
 func Test_BeckTrick(t *testing.T) {
 	paillierProtocol := INSECURE_NewBasicPaillier_PIR_Protocol_INSECURE(4)
-	err := paillierProtocol.createPrivateKeyMaterial()
+	err := paillierProtocol.CreatePrivateKeyMaterial()
 	if err != nil {
 		t.Error("Error in creating private key material")
 	}
