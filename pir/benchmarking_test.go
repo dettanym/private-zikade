@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"os"
 	"runtime"
+	"strconv"
 	"testing"
 	"time"
 
@@ -41,6 +42,32 @@ func getRLWEPIRRequestSize(req *pb.PIR_Request) int {
 func getRLWEPIRResponseSize(resp *pb.PIR_Response) int {
 	// TODO: there must be a better way!
 	return len(resp.Ciphertexts)
+}
+
+func TestE2E(t *testing.T) {
+	log2_number_of_rows_str := os.Getenv("LOG2_NUMBER_OF_ROWS")
+	log2_number_of_rows, err := strconv.Atoi(log2_number_of_rows_str)
+	assert.NoError(t, err)
+
+	log2_num_db_rows_str := os.Getenv("LOG2_NUM_DB_ROWS")
+	log2_num_db_rows, err := strconv.Atoi(log2_num_db_rows_str)
+	assert.NoError(t, err)
+
+	mode_str := os.Getenv("MODE")
+	mode, err := strconv.Atoi(mode_str)
+	assert.NoError(t, err)
+
+	row_size_str := os.Getenv("ROW_SIZE")
+	row_size, err := strconv.Atoi(row_size_str)
+	assert.NoError(t, err)
+
+	s := resultsStats{
+		NumRows: 1 << log2_num_db_rows,
+		Runs:    1,
+	}
+
+	b := testing.B{N: 1}
+	s.end_to_end_PIR(&b, log2_number_of_rows, log2_num_db_rows, mode, row_size)
 }
 
 func (s *resultsStats) end_to_end_PIR(b *testing.B, log2_number_of_rows int, log2_num_db_rows int, mode int, row_size int) {
