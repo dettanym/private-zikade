@@ -153,11 +153,14 @@ func Benchmark_PIR_for_Routing_Table(b *testing.B) {
 	row_size := 20 * 256
 
 	runs := 10 // b.N
-	peerRoutingResultsStats := make([]resultsStats, runs)
-
 	modes := []int{Basic_Paillier, RLWE_All_Keys, RLWE_Whispir_2_Keys, RLWE_Whispir_3_Keys}
+	experimentName := "peerRouting-"
+	resultFiles := createResultsFiles(b, experimentName, modes)
+
+	peerRoutingResultsStats := make([][]resultsStats, len(modes))
+
 	for log_2_db_rows := 4; log_2_db_rows <= 8; log_2_db_rows++ {
-		for _, mode := range modes {
+		for i, mode := range modes {
 			fmt.Println("---- mode: ", mode, "Legend:",
 				"Paillier = ", Basic_Paillier,
 				"RLWE_All_Keys = ", RLWE_All_Keys,
@@ -165,13 +168,17 @@ func Benchmark_PIR_for_Routing_Table(b *testing.B) {
 				"RLWE_Whispir_3_Keys = ", RLWE_Whispir_3_Keys)
 			s := resultsStats{
 				NumRows: 1 << log_2_db_rows,
-				Mode:    mode,
 				Runs:    runs,
 			}
-
+			s.Mode = getMode(mode)
 			s.end_to_end_PIR(b, 8, log_2_db_rows, mode, row_size)
-			peerRoutingResultsStats = append(peerRoutingResultsStats, s)
+			peerRoutingResultsStats[i] = append(peerRoutingResultsStats[i], s)
 		}
+	}
+
+	for i, modeStats := range peerRoutingResultsStats {
+		resultFile := resultFiles[i]
+		writeStatsToCSVFileHandle(b, resultFile, modeStats)
 	}
 }
 
@@ -179,7 +186,6 @@ func Benchmark_PIR_for_Provider_Routing(b *testing.B) {
 	// ensures that all CPUs are used
 	fmt.Println(runtime.GOMAXPROCS(runtime.NumCPU()))
 
-	var providerRoutingResultsStats []resultsStats
 	runs := 10 // b.N
 
 	// These numbers are derived using the script
@@ -210,14 +216,22 @@ func Benchmark_PIR_for_Provider_Routing(b *testing.B) {
 		196608: 99,
 	}
 
-	for num_cids := 8192; num_cids < 100000; num_cids += 8192 {
+	modes := []int{RLWE_All_Keys, RLWE_Whispir_2_Keys, RLWE_Whispir_3_Keys}
+	experimentName := "providerRouting-"
+	resultFiles := createResultsFiles(b, experimentName, modes)
+
+	cidsMin := 8192
+	cidsMax := 100000
+	cidsStep := cidsMin
+	providerRoutingResultsStats := make([][]resultsStats, len(modes))
+
+	for num_cids := cidsMin; num_cids < cidsMax; num_cids += cidsStep {
 
 		log_2_db_rows := 12
 
 		row_size := maxBinLoad[num_cids] + 2 // Adding 2, just to be safe
 
-		modes := []int{RLWE_All_Keys, RLWE_Whispir_2_Keys, RLWE_Whispir_3_Keys}
-		for _, mode := range modes {
+		for i, mode := range modes {
 			fmt.Println("---- mode: ", mode, "Legend:",
 				"RLWE_All_Keys = ", RLWE_All_Keys,
 				"RLWE_Whispir_2_Keys = ", RLWE_Whispir_2_Keys,
@@ -227,16 +241,19 @@ func Benchmark_PIR_for_Provider_Routing(b *testing.B) {
 			s := resultsStats{
 				NumRows: num_cids,
 				RowSize: row_size,
-				Mode:    mode,
 				Runs:    runs,
 			}
+			s.Mode = getMode(mode)
 			s.end_to_end_PIR(b, log_2_db_rows, log_2_db_rows, mode, row_size)
-			providerRoutingResultsStats = append(providerRoutingResultsStats, s)
+			providerRoutingResultsStats[i] = append(providerRoutingResultsStats[i], s)
 
 		}
 	}
-	err := writeStatsToCSV(providerRoutingResultsStats, "providerRouting-")
-	require.NoError(b, err)
+	for i, modeStats := range providerRoutingResultsStats {
+		resultFile := resultFiles[i]
+		writeStatsToCSVFileHandle(b, resultFile, modeStats)
+	}
+
 }
 
 type results struct {
@@ -247,6 +264,19 @@ type results struct {
 	serverRuntime int64
 	pirRequest    *pb.PIR_Request
 	pirResponse   *pb.PIR_Response
+}
+
+func getMode(mode int) string {
+	if mode == RLWE_All_Keys {
+		return "RLWE_All_Keys"
+	} else if mode == RLWE_Whispir_2_Keys {
+		return "RLWE_Whispir_2_Keys"
+	} else if mode == RLWE_Whispir_3_Keys {
+		return "RLWE_Whispir_3_Keys"
+	} else if mode == Basic_Paillier {
+		return "Paillier"
+	}
+	return ""
 }
 
 func (s *resultsStats) setStats(ourResults []*results) {
@@ -268,35 +298,45 @@ func (s *resultsStats) setStats(ourResults []*results) {
 	s.ResLenMean = int(resLenMean)
 	s.TotalLenMean = s.ReqLenMean + s.ResLenMean
 	s.ServerRuntimeMean, s.ServerRuntimeStddev = stat.MeanStdDev(runtimes, nil)
-	fmt.Printf("Averaged results over %d Runs: Req Length %f(B), Response Length %f(B), Server time (ms)%f\n", runs, s.ReqLenMean, s.ResLenMean, s.ServerRuntimeMean)
+	fmt.Printf("Averaged results over %d Runs: Req Length %d(B), Response Length %d(B), Server time (ms)%f\n", runs, s.ReqLenMean, s.ResLenMean, s.ServerRuntimeMean)
 	fmt.Printf("Stddev of server time (ms) %f\n", s.ServerRuntimeStddev)
 }
 
-func writeStatsToCSV(arr []resultsStats, experimentName string) error {
+func writeStatsToCSVFileHandle(b *testing.B, statsFile *os.File, arr []resultsStats) {
+	err := gocsv.MarshalFile(&arr, statsFile) // Use this to save the CSV back to the file
+	assert.NoError(b, err)
+
+	err = statsFile.Close()
+	assert.NoError(b, err)
+}
+
+func createResultsFiles(b *testing.B, experimentName string, modes []int) []*os.File {
+	// for all modes
+	// first create a file handle with a name
+	resultFiles := make([]*os.File, len(modes))
+
 	timestamp := time.Now().Format(time.DateTime)
-	filename := experimentName + timestamp + ".csv"
-	statsFile, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, os.ModePerm)
-	if err != nil {
-		return err
+	filePrefix := experimentName + timestamp
+	for i, mode := range modes {
+		modeStr := getMode(mode)
+		filename := filePrefix + modeStr + ".csv"
+		fmt.Println(filename)
+		statsFile, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, os.ModePerm)
+		require.NoError(b, err)
+		resultFiles[i] = statsFile
 	}
-
-	err = gocsv.MarshalFile(&arr, statsFile) // Use this to save the CSV back to the file
-	if err != nil {
-		return err
-	}
-
-	return statsFile.Close()
+	return resultFiles
 }
 
 type resultsStats struct {
-	Mode    int `csv:"Mode"`
-	NumRows int `csv:"NumRows"`
-	RowSize int `csv:"RowSize(Bytes)"`
-	Runs    int `csv:"Runs"`
-	SeedMin int `csv:"SeedMin"`
-	SeedMax int `csv:"SeedMax"`
+	Mode    string `csv:"Mode"`
+	NumRows int    `csv:"NumRows"`
+	RowSize int    `csv:"RowSize(Bytes)"`
+	Runs    int    `csv:"Runs"`
+	SeedMin int    `csv:"SeedMin"`
+	SeedMax int    `csv:"SeedMax"`
 
-	TotalLenMean        int     `csv:"TotalLeanMean(Bytes)"`
+	TotalLenMean        int     `csv:"TotalLenMean(Bytes)"`
 	ReqLenMean          int     `csv:"ReqLenMean(Bytes)"`
 	ResLenMean          int     `csv:"ResLenMean(Bytes)"`
 	ServerRuntimeMean   float64 `csv:"ServerRuntimeMean(ms)"`
