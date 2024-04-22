@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	Basic_Paillier int = 43
+	Basic_Paillier string = "Basic_Paillier"
 )
 
 type BasicPaillier_PIR_Protocol struct {

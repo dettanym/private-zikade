@@ -70,7 +70,7 @@ func TestPIR_ProcessRequestAndReturnResponse_Correctness(t *testing.T) {
 
 	// client query generation
 	log2_number_of_rows := 12
-	mode := 0
+	mode := RLWE_All_Keys
 	client_PIR_Protocol := NewSimpleRLWE_PIR_Protocol_mode(log2_number_of_rows, mode)
 	err := client_PIR_Protocol.CreatePrivateKeyMaterial()
 	require.NoError(t, err)
@@ -116,7 +116,8 @@ func TestPIR_ProcessRequestAndReturnResponse_Correctness_LessThan256Rows(t *test
 	num_db_rows := 1 << log2_num_db_rows
 	number_of_rows := 1 << log2_number_of_rows
 
-	client_PIR_Protocol := NewSimpleRLWE_PIR_Protocol_mode(log2_number_of_rows, 1)
+	mode := RLWE_Whispir_3_Keys
+	client_PIR_Protocol := NewSimpleRLWE_PIR_Protocol_mode(log2_number_of_rows, mode)
 	err := client_PIR_Protocol.CreatePrivateKeyMaterial()
 	require.NoError(t, err)
 
@@ -130,7 +131,7 @@ func TestPIR_ProcessRequestAndReturnResponse_Correctness_LessThan256Rows(t *test
 	db_element_size := 20 * 256
 	response := &pb.PIR_Response{}
 	{
-		server_PIR_Protocol := NewSimpleRLWE_PIR_Protocol_mode(log2_number_of_rows, 1)
+		server_PIR_Protocol := NewSimpleRLWE_PIR_Protocol_mode(log2_number_of_rows, mode)
 
 		for i := range db {
 			db[i] = make([]byte, db_element_size)

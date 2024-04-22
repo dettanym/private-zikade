@@ -54,8 +54,6 @@ func TestE2E(t *testing.T) {
 	assert.NoError(t, err)
 
 	mode_str := os.Getenv("MODE")
-	mode, err := strconv.Atoi(mode_str)
-	assert.NoError(t, err)
 
 	row_size_str := os.Getenv("ROW_SIZE")
 	row_size, err := strconv.Atoi(row_size_str)
@@ -67,10 +65,10 @@ func TestE2E(t *testing.T) {
 	}
 
 	b := testing.B{N: 1}
-	s.end_to_end_PIR(&b, log2_number_of_rows, log2_num_db_rows, mode, row_size)
+	s.end_to_end_PIR(&b, log2_number_of_rows, log2_num_db_rows, mode_str, row_size)
 }
 
-func (s *resultsStats) end_to_end_PIR(b *testing.B, log2_number_of_rows int, log2_num_db_rows int, mode int, row_size int) {
+func (s *resultsStats) end_to_end_PIR(b *testing.B, log2_number_of_rows int, log2_num_db_rows int, mode string, row_size int) {
 
 	fmt.Println("- log_2_num_rows: ", log2_number_of_rows)
 	fmt.Println("- log_2_num_db_rows: ", log2_num_db_rows)
@@ -142,7 +140,7 @@ func (r *results) Client_PIR_Response(b *testing.B, client_PIR_Protocol PIR_Prot
 	}
 }
 
-func (r *results) Server_PIR(b *testing.B, log2_number_of_rows int, mode int, pirRequest *pb.PIR_Request, db [][]byte) *pb.PIR_Response {
+func (r *results) Server_PIR(b *testing.B, log2_number_of_rows int, mode string, pirRequest *pb.PIR_Request, db [][]byte) *pb.PIR_Response {
 	response := &pb.PIR_Response{}
 
 	var server_PIR_Protocol PIR_Protocol
@@ -161,7 +159,7 @@ func (r *results) Server_PIR(b *testing.B, log2_number_of_rows int, mode int, pi
 	return response
 }
 
-func (r *results) setReqResLen(mode int) {
+func (r *results) setReqResLen(mode string) {
 	if mode == RLWE_All_Keys || mode == RLWE_Whispir_3_Keys || mode == RLWE_Whispir_2_Keys {
 		r.requestLen = getRLWEPIRRequestSize(r.pirRequest)
 		r.responseLen = getRLWEPIRResponseSize(r.pirResponse)
@@ -180,7 +178,7 @@ func Benchmark_PIR_for_Routing_Table(b *testing.B) {
 	row_size := 20 * 256
 
 	runs := 1 // b.N
-	modes := []int{Basic_Paillier, RLWE_All_Keys, RLWE_Whispir_2_Keys, RLWE_Whispir_3_Keys}
+	modes := []string{Basic_Paillier, RLWE_All_Keys, RLWE_Whispir_2_Keys, RLWE_Whispir_3_Keys}
 	experimentName := "peerRouting-"
 	resultFiles := createResultsFiles(b, experimentName, modes)
 
@@ -243,7 +241,7 @@ func Benchmark_PIR_for_Provider_Routing(b *testing.B) {
 		196608: 99,
 	}
 
-	modes := []int{RLWE_All_Keys, RLWE_Whispir_2_Keys, RLWE_Whispir_3_Keys}
+	modes := []string{RLWE_All_Keys, RLWE_Whispir_2_Keys, RLWE_Whispir_3_Keys}
 	experimentName := "providerRouting-"
 	resultFiles := createResultsFiles(b, experimentName, modes)
 
@@ -293,7 +291,7 @@ type results struct {
 	pirResponse   *pb.PIR_Response
 }
 
-func getMode(mode int) string {
+func getMode(mode string) string {
 	if mode == RLWE_All_Keys {
 		return "RLWE_All_Keys"
 	} else if mode == RLWE_Whispir_2_Keys {
@@ -337,7 +335,7 @@ func writeStatsToCSVFileHandle(b *testing.B, statsFile *os.File, arr []resultsSt
 	assert.NoError(b, err)
 }
 
-func createResultsFiles(b *testing.B, experimentName string, modes []int) []*os.File {
+func createResultsFiles(b *testing.B, experimentName string, modes []string) []*os.File {
 	// for all modes
 	// first create a file handle with a name
 	resultFiles := make([]*os.File, len(modes))

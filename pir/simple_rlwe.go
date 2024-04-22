@@ -13,9 +13,9 @@ import (
 )
 
 const (
-	RLWE_All_Keys       int = 0
-	RLWE_Whispir_3_Keys     = 3
-	RLWE_Whispir_2_Keys     = 2
+	RLWE_All_Keys       string = "RLWE_All_Keys"
+	RLWE_Whispir_3_Keys        = "RLWE_Whispir_3_Keys"
+	RLWE_Whispir_2_Keys        = "RLWE_Whispir_2_Keys"
 )
 
 type SimpleRLWE_PIR_Protocol struct {
@@ -26,7 +26,7 @@ type SimpleRLWE_PIR_Protocol struct {
 	parameters bgv.Parameters
 
 	// See the const above
-	mode int
+	mode string
 
 	secret_key *rlwe.SecretKey
 
@@ -43,7 +43,7 @@ type SimpleRLWE_PIR_Protocol struct {
 func NewSimpleRLWE_PIR_Protocol(log2_num_rows int) *SimpleRLWE_PIR_Protocol {
 	rlweStruct := &SimpleRLWE_PIR_Protocol{
 		log2_num_rows: log2_num_rows,
-		mode:          0,
+		mode:          RLWE_All_Keys,
 	}
 	err := rlweStruct.generateParameters()
 	if err != nil {
@@ -62,7 +62,7 @@ func NewSimpleRLWE_PIR_Protocol(log2_num_rows int) *SimpleRLWE_PIR_Protocol {
 }
 
 // Use by client to create a new PIR request
-func NewSimpleRLWE_PIR_Protocol_mode(log2_num_rows int, mode int) *SimpleRLWE_PIR_Protocol {
+func NewSimpleRLWE_PIR_Protocol_mode(log2_num_rows int, mode string) *SimpleRLWE_PIR_Protocol {
 	rlweStruct := &SimpleRLWE_PIR_Protocol{
 		log2_num_rows: log2_num_rows,
 		mode:          mode,

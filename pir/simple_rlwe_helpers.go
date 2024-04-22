@@ -244,7 +244,7 @@ func threeKeyAutomorphism(eval *bgv.Evaluator, ctIn *rlwe.Ciphertext, galEl uint
 // The method will return an error if:
 //   - The input ciphertext degree is not one
 //   - The ring type is not ring.Standard
-func customExpand(eval *bgv.Evaluator, mode int, ctIn *rlwe.Ciphertext, logN, logGap int) (opOut []*rlwe.Ciphertext, err error) {
+func customExpand(eval *bgv.Evaluator, mode string, ctIn *rlwe.Ciphertext, logN, logGap int) (opOut []*rlwe.Ciphertext, err error) {
 
 	if ctIn.Degree() != 1 {
 		return nil, fmt.Errorf("cannot Expand: ctIn.Degree() != 1")
