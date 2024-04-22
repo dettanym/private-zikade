@@ -152,7 +152,7 @@ func Benchmark_PIR_for_Routing_Table(b *testing.B) {
 
 	row_size := 20 * 256
 
-	runs := 10 // b.N
+	runs := 1 // b.N
 	modes := []int{Basic_Paillier, RLWE_All_Keys, RLWE_Whispir_2_Keys, RLWE_Whispir_3_Keys}
 	experimentName := "peerRouting-"
 	resultFiles := createResultsFiles(b, experimentName, modes)
@@ -186,7 +186,7 @@ func Benchmark_PIR_for_Provider_Routing(b *testing.B) {
 	// ensures that all CPUs are used
 	fmt.Println(runtime.GOMAXPROCS(runtime.NumCPU()))
 
-	runs := 10 // b.N
+	runs := 1 // b.N
 
 	// These numbers are derived using the script
 	maxBinLoad := map[int]int{
