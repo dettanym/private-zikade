@@ -221,7 +221,7 @@ func Benchmark_PIR_for_Provider_Routing(b *testing.B) {
 	resultFiles := createResultsFiles(b, experimentName, modes)
 
 	cidsMin := 8192
-	cidsMax := 100000
+	cidsMax := 200000
 	cidsStep := cidsMin
 	providerRoutingResultsStats := make([][]resultsStats, len(modes))
 
