@@ -164,9 +164,9 @@ func Benchmark_PIR_for_Routing_Table(b *testing.B) {
 				"RLWE_Whispir_2_Keys = ", RLWE_Whispir_2_Keys,
 				"RLWE_Whispir_3_Keys = ", RLWE_Whispir_3_Keys)
 			s := resultsStats{
-				Num_rows: 1 << log_2_db_rows,
-				Mode:     mode,
-				Runs:     runs,
+				NumRows: 1 << log_2_db_rows,
+				Mode:    mode,
+				Runs:    runs,
 			}
 
 			s.end_to_end_PIR(b, 8, log_2_db_rows, mode, row_size)
@@ -223,12 +223,12 @@ func Benchmark_PIR_for_Provider_Routing(b *testing.B) {
 				"RLWE_Whispir_2_Keys = ", RLWE_Whispir_2_Keys,
 				"RLWE_Whispir_3_Keys = ", RLWE_Whispir_3_Keys)
 			fmt.Println("- num_cids: ", num_cids)
-			fmt.Println("- Row_size: ", row_size)
+			fmt.Println("- RowSize: ", row_size)
 			s := resultsStats{
-				Num_rows: num_cids,
-				Row_size: row_size,
-				Mode:     mode,
-				Runs:     runs,
+				NumRows: num_cids,
+				RowSize: row_size,
+				Mode:    mode,
+				Runs:    runs,
 			}
 			s.end_to_end_PIR(b, log_2_db_rows, log_2_db_rows, mode, row_size)
 			providerRoutingResultsStats = append(providerRoutingResultsStats, s)
@@ -262,8 +262,11 @@ func (s *resultsStats) setStats(ourResults []*results) {
 		runtimes[i] = float64(res.serverRuntime)
 	}
 
-	s.ReqLenMean, _ = stat.MeanStdDev(reqLens, nil)
-	s.ResLenMean, _ = stat.MeanStdDev(resLens, nil)
+	reqLenMean, _ := stat.MeanStdDev(reqLens, nil)
+	resLenMean, _ := stat.MeanStdDev(resLens, nil)
+	s.ReqLenMean = int(reqLenMean)
+	s.ResLenMean = int(resLenMean)
+	s.TotalLenMean = s.ReqLenMean + s.ResLenMean
 	s.ServerRuntimeMean, s.ServerRuntimeStddev = stat.MeanStdDev(runtimes, nil)
 	fmt.Printf("Averaged results over %d Runs: Req Length %f(B), Response Length %f(B), Server time (ms)%f\n", runs, s.ReqLenMean, s.ResLenMean, s.ServerRuntimeMean)
 	fmt.Printf("Stddev of server time (ms) %f\n", s.ServerRuntimeStddev)
@@ -286,15 +289,16 @@ func writeStatsToCSV(arr []resultsStats, experimentName string) error {
 }
 
 type resultsStats struct {
-	Mode     int `csv:"Mode"`
-	Num_rows int `csv:"Num_rows"`
-	Row_size int `csv:"Row_size(Bytes)"`
-	Runs     int `csv:"Runs"`
-	SeedMin  int `csv:"SeedMin"`
-	SeedMax  int `csv:"SeedMax"`
+	Mode    int `csv:"Mode"`
+	NumRows int `csv:"NumRows"`
+	RowSize int `csv:"RowSize(Bytes)"`
+	Runs    int `csv:"Runs"`
+	SeedMin int `csv:"SeedMin"`
+	SeedMax int `csv:"SeedMax"`
 
-	ReqLenMean          float64 `csv:"ReqLenMean(Bytes)"`
-	ResLenMean          float64 `csv:"ResLenMean(Bytes)"`
+	TotalLenMean        int     `csv:"TotalLeanMean(Bytes)"`
+	ReqLenMean          int     `csv:"ReqLenMean(Bytes)"`
+	ResLenMean          int     `csv:"ResLenMean(Bytes)"`
 	ServerRuntimeMean   float64 `csv:"ServerRuntimeMean(ms)"`
 	ServerRuntimeStddev float64 `csv:"ServerRuntimeStddev(ms)"`
 }
