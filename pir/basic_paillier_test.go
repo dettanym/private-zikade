@@ -142,7 +142,7 @@ func TestBasicPIR_with_Paillier_ProcessRequestAndReturnResponse(t *testing.T) {
 }
 
 func BenchmarkBasicPIR_with_Paillier_ProcessRequestAndReturnResponse(b *testing.B) {
-	log_2_num_rows := 4
+	log_2_num_rows := 8
 	client_PIR_Protocol := NewBasicPaillier_PIR_Protocol(log_2_num_rows)
 	err := client_PIR_Protocol.CreatePrivateKeyMaterial()
 	if err != nil {
@@ -161,7 +161,7 @@ func BenchmarkBasicPIR_with_Paillier_ProcessRequestAndReturnResponse(b *testing.
 	log_2_num_db_rows := 4
 	num_db_rows := 1 << log_2_num_db_rows
 	db := make([][]byte, num_db_rows)
-	db_element_size := 5
+	db_element_size := 5120
 	response := &pb.PIR_Response{}
 	{
 		server_PIR_Protocol := NewBasicPaillier_PIR_Protocol(log_2_num_rows)
