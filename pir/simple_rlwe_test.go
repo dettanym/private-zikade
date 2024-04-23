@@ -46,7 +46,8 @@ func TestPIR_Protocol_Simple_RLWE_ProcessRequestAndReturnResponse(t *testing.T) 
 
 func TestPlaintextToBytesArray(t *testing.T) {
 	PIR_Protocol := NewSimpleRLWE_PIR_Protocol(1)
-	PIR_Protocol.generateParameters()
+	err := PIR_Protocol.generateParameters()
+	require.NoError(t, err)
 
 	seed := rand.NewSource(time.Now().UnixNano())
 
@@ -161,8 +162,10 @@ func TestPIR_ProcessRequestAndReturnResponse_Correctness_LessThan256Rows(t *test
 func Benchmark_Key_Sizes(b *testing.B) {
 	log2_number_of_rows := 4
 	client_PIR_Protocol := NewSimpleRLWE_PIR_Protocol(log2_number_of_rows)
-	client_PIR_Protocol.generateParameters()
-	client_PIR_Protocol.CreatePrivateKeyMaterial()
+	err := client_PIR_Protocol.generateParameters()
+	require.NoError(b, err)
+	err = client_PIR_Protocol.CreatePrivateKeyMaterial()
+	require.NoError(b, err)
 
 	query := 0
 	pirRequest, err := client_PIR_Protocol.GenerateRequestFromQuery(query)
@@ -198,9 +201,10 @@ func Benchmark_Key_Sizes(b *testing.B) {
 func Benchmark_Possible_Eval_key_sizes(b *testing.B) {
 	for log2_number_of_rows := 0; log2_number_of_rows <= 12; log2_number_of_rows++ {
 		client_PIR_Protocol := NewSimpleRLWE_PIR_Protocol(log2_number_of_rows)
-		client_PIR_Protocol.generateParameters()
-		client_PIR_Protocol.CreatePrivateKeyMaterial()
-
+		err := client_PIR_Protocol.generateParameters()
+		require.NoError(b, err)
+		err = client_PIR_Protocol.CreatePrivateKeyMaterial()
+		require.NoError(b, err)
 		query := 0
 		pirRequest, err := client_PIR_Protocol.GenerateRequestFromQuery(query)
 		require.NoError(b, err)
