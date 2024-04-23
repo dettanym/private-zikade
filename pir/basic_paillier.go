@@ -39,7 +39,7 @@ func NewBasicPaillier_PIR_Protocol(log2_num_rows int) *BasicPaillier_PIR_Protoco
 	basic_paillier_protocol := &BasicPaillier_PIR_Protocol{
 		log2_num_rows: log2_num_rows,
 	}
-	basic_paillier_protocol.pailler_bitlength = 3072 / 2
+	basic_paillier_protocol.pailler_bitlength = 3072
 	basic_paillier_protocol.bytesPerCiphertext = basic_paillier_protocol.pailler_bitlength / 8
 	return basic_paillier_protocol
 }
@@ -71,7 +71,7 @@ func unmarshalPaillierPublicKeyFromBytes(public_key_bytes *pb.Paillier_Public_Ke
 }
 
 func (paillierProtocol *BasicPaillier_PIR_Protocol) CreatePrivateKeyMaterial() error {
-	var key, _ = paillier.NewKeys(paillierProtocol.pailler_bitlength)
+	var key, _ = paillier.NewKeys(paillierProtocol.pailler_bitlength / 2)
 	paillierProtocol.secret_key = key
 
 	paillierProtocol.public_key = key.PubKey
