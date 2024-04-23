@@ -30,7 +30,7 @@ type PirClientPeerRouting struct {
 }
 
 // TODO: Can pass a choice to the two constructors to choose which PIR algorithm e.g. RLWE or Paillier
-func NewPirClientPeerRouting(mode int) *PirClientPeerRouting {
+func NewPirClientPeerRouting(mode string) *PirClientPeerRouting {
 	return &PirClientPeerRouting{
 		PirClient: PirClient{
 			protocol: pir.NewSimpleRLWE_PIR_Protocol_mode(8, mode),
@@ -55,7 +55,7 @@ type PirClientProviderRouting struct {
 	log2_num_buckets int
 }
 
-func NewPirClientProviderRouting(log2_num_buckets int, mode int) *PirClientProviderRouting {
+func NewPirClientProviderRouting(log2_num_buckets int, mode string) *PirClientProviderRouting {
 	return &PirClientProviderRouting{
 		log2_num_buckets: log2_num_buckets,
 		PirClient: PirClient{
