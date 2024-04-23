@@ -161,7 +161,9 @@ func (r *results) Server_PIR(b *testing.B, log2_number_of_rows int, mode string,
 
 func (r *results) setReqResLen(mode string) {
 	if mode == RLWE_All_Keys || mode == RLWE_Whispir_3_Keys || mode == RLWE_Whispir_2_Keys {
-		r.requestLen = getRLWEPIRRequestSize(r.pirRequest)
+		// All RLWE schemes can be optimized with a seeding trick
+		// Lattigo library doesn't implement this trick yet
+		r.requestLen = getRLWEPIRRequestSize(r.pirRequest) / 2
 		r.responseLen = getRLWEPIRResponseSize(r.pirResponse)
 	} else { // mode == Basic_Paillier
 		r.requestLen = getPaillierPIRRequestSize(r.pirRequest)
@@ -186,11 +188,7 @@ func Benchmark_PIR_for_Routing_Table(b *testing.B) {
 
 	for log_2_db_rows := 4; log_2_db_rows <= 8; log_2_db_rows++ {
 		for i, mode := range modes {
-			fmt.Println("---- mode: ", mode, "Legend:",
-				"Paillier = ", Basic_Paillier,
-				"RLWE_All_Keys = ", RLWE_All_Keys,
-				"RLWE_Whispir_2_Keys = ", RLWE_Whispir_2_Keys,
-				"RLWE_Whispir_3_Keys = ", RLWE_Whispir_3_Keys)
+			fmt.Println("---- mode: ", mode)
 			s := resultsStats{
 				NumRows: 1 << log_2_db_rows,
 				Runs:    runs,
@@ -257,10 +255,7 @@ func Benchmark_PIR_for_Provider_Routing(b *testing.B) {
 		row_size := maxBinLoad[num_cids] + 2 // Adding 2, just to be safe
 
 		for i, mode := range modes {
-			fmt.Println("---- mode: ", mode, "Legend:",
-				"RLWE_All_Keys = ", RLWE_All_Keys,
-				"RLWE_Whispir_2_Keys = ", RLWE_Whispir_2_Keys,
-				"RLWE_Whispir_3_Keys = ", RLWE_Whispir_3_Keys)
+			fmt.Println("---- mode: ", mode)
 			fmt.Println("- num_cids: ", num_cids)
 			fmt.Println("- RowSize: ", row_size)
 			s := resultsStats{
@@ -299,7 +294,7 @@ func getMode(mode string) string {
 	} else if mode == RLWE_Whispir_3_Keys {
 		return "RLWE_Whispir_3_Keys"
 	} else if mode == Basic_Paillier {
-		return "Paillier"
+		return "Basic_Paillier"
 	}
 	return ""
 }
@@ -340,7 +335,7 @@ func createResultsFiles(b *testing.B, experimentName string, modes []string) []*
 	// first create a file handle with a name
 	resultFiles := make([]*os.File, len(modes))
 
-	timestamp := time.Now().Format(time.DateTime)
+	timestamp := time.Now().Format(time.RFC3339)
 	filePrefix := experimentName + timestamp
 	for i, mode := range modes {
 		modeStr := getMode(mode)
