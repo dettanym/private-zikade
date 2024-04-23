@@ -186,14 +186,14 @@ func Benchmark_PIR_for_Routing_Table(b *testing.B) {
 
 	row_size := 20 * 256
 
-	runs := 1                         // b.N
-	modes := []string{Basic_Paillier} //, RLWE_All_Keys, RLWE_Whispir_2_Keys, RLWE_Whispir_3_Keys}
+	runs := 10 // b.N
+	modes := []string{Basic_Paillier, RLWE_All_Keys, RLWE_Whispir_2_Keys, RLWE_Whispir_3_Keys}
 	experimentName := "peerRouting-"
 	resultFiles := createResultsFiles(b, experimentName, modes)
 
 	peerRoutingResultsStats := make([][]resultsStats, len(modes))
 
-	for log_2_db_rows := 4; log_2_db_rows <= 4; log_2_db_rows++ {
+	for log_2_db_rows := 4; log_2_db_rows <= 8; log_2_db_rows++ {
 		for i, mode := range modes {
 			fmt.Println("---- mode: ", mode)
 			s := resultsStats{
