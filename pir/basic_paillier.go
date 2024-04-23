@@ -40,7 +40,7 @@ func NewBasicPaillier_PIR_Protocol(log2_num_rows int) *BasicPaillier_PIR_Protoco
 		log2_num_rows: log2_num_rows,
 	}
 	basic_paillier_protocol.pailler_bitlength = 3072
-	basic_paillier_protocol.bytesPerCiphertext = basic_paillier_protocol.pailler_bitlength / 8
+	basic_paillier_protocol.bytesPerCiphertext = basic_paillier_protocol.pailler_bitlength/8 - 1
 	return basic_paillier_protocol
 }
 
@@ -50,7 +50,7 @@ func INSECURE_NewBasicPaillier_PIR_Protocol_INSECURE(log2_num_rows int) *BasicPa
 		log2_num_rows: log2_num_rows,
 	}
 	basic_paillier_protocol.pailler_bitlength = 1024
-	basic_paillier_protocol.bytesPerCiphertext = basic_paillier_protocol.pailler_bitlength / 8
+	basic_paillier_protocol.bytesPerCiphertext = basic_paillier_protocol.pailler_bitlength/8 - 1
 	return basic_paillier_protocol
 }
 
