@@ -179,6 +179,9 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) GenerateRequestFromQuery(requested_ro
 	num_slots := rlweStruct.parameters.MaxSlots()
 	// TODO: Find the best value for this parameter
 	log_num_cts := 0
+	if rlweStruct.log2_num_rows > rlweStruct.parameters.LogN() {
+		log_num_cts = rlweStruct.log2_num_rows - rlweStruct.parameters.LogN()
+	}
 	num_cts := 1 << log_num_cts
 	log2_bits_per_ct := rlweStruct.log2_num_rows - log_num_cts
 	bits_per_ct := 1 << log2_bits_per_ct
@@ -311,22 +314,21 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 
 	// generate indicator vector using encrypted query, evaluation keys
 	var indicator_bits []*rlwe.Ciphertext
+	start_time := time.Now()
 	for i := range encrypted_query {
 		var indicator_bits_slice []*rlwe.Ciphertext
 		if rlweStruct.log2_num_rows-log2_num_cts > 0 {
-			start_time := time.Now()
 			indicator_bits_slice, err = customExpand(evaluator, rlweStruct.mode, &encrypted_query[i], rlweStruct.log2_num_rows-log2_num_cts, 0)
 			if err != nil {
 				return nil, err
 			}
-			elapsed := time.Since(start_time)
-			fmt.Println("- time elapsed for key expansion: \t\t\t\t\t\t\t", elapsed.Milliseconds())
-
 		} else { // rlweStruct.log2_num_rows == log2_num_cts
 			indicator_bits_slice = []*rlwe.Ciphertext{&encrypted_query[i]}
 		}
 		indicator_bits = append(indicator_bits, indicator_bits_slice...)
 	}
+	elapsed := time.Since(start_time)
+	fmt.Println("- time elapsed for key expansion (ms): \t\t\t\t\t\t\t", elapsed.Milliseconds())
 
 	start := time.Now()
 	err = rlweStruct.transformDBToPlaintextForm(database)
@@ -334,7 +336,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 		return nil, err
 	}
 	duration := time.Since(start)
-	fmt.Println("- time elapsed for transformDBToPlaintextForm is: \t\t\t", duration.Milliseconds())
+	fmt.Println("- time elapsed for transformDBToPlaintextForm (ms) is: \t\t\t", duration.Milliseconds())
 
 	num_db_rows := len(database)
 	num_rows := 1 << rlweStruct.log2_num_rows
@@ -353,7 +355,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 		return nil, fmt.Errorf("initialize this struct with log2_num_rows as greater than or equal to the log of the number of rows in the DB")
 	}
 	duration = time.Since(start)
-	fmt.Println("- time elapsed for evaluator.Add over indicator bits: is: \t", duration.Nanoseconds())
+	fmt.Println("- time elapsed for evaluator.Add over indicator bits (ns): is: \t", duration.Nanoseconds())
 
 	// start = time.Now()
 	for k := 0; k < len(rlweStruct.response_ciphertexts); k++ {
