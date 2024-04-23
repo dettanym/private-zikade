@@ -39,7 +39,7 @@ func NewBasicPaillier_PIR_Protocol(log2_num_rows int) *BasicPaillier_PIR_Protoco
 	basic_paillier_protocol := &BasicPaillier_PIR_Protocol{
 		log2_num_rows: log2_num_rows,
 	}
-	basic_paillier_protocol.pailler_bitlength = 3072
+	basic_paillier_protocol.pailler_bitlength = 3072 / 2
 	basic_paillier_protocol.bytesPerCiphertext = basic_paillier_protocol.pailler_bitlength / 8
 	return basic_paillier_protocol
 }
