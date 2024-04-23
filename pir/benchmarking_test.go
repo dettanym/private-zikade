@@ -19,6 +19,8 @@ import (
 func getPaillierPIRRequestSize(req *pb.PIR_Request) int {
 	// TODO: there must be a better way!
 	total := len(req.Parameters)
+	pubKey := req.GetPaillier_Public_Key()
+	total += len(pubKey.N) + len(pubKey.G)
 	for _, ct := range req.EncryptedPaillierQuery {
 		total += len(ct)
 	}
