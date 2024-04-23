@@ -111,6 +111,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) marshalRequestToPB() (*pb.PIR_Request
 		EncryptedQuery: query_bytes,
 	}
 
+	// fmt.Println(" - marshalling phase: request total length: ", len(params_bytes)+len(evk_bytes)+len(query_bytes))
 	return &pirRequest, nil
 }
 
@@ -157,6 +158,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) marshalResponseToPB() (*pb.PIR_Respon
 		return nil, err
 	}
 	response := &pb.PIR_Response{Ciphertexts: ciphertexts_bytes}
+	// fmt.Println(" - marshalling phase: response total length: ", len(ciphertexts_bytes))
 	return response, nil
 }
 
