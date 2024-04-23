@@ -177,7 +177,6 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) GenerateRequestFromQuery(requested_ro
 
 	encoder := bgv.NewEncoder(rlweStruct.parameters)
 	num_slots := rlweStruct.parameters.MaxSlots()
-	// TODO: Find the best value for this parameter
 	log_num_cts := 0
 	if rlweStruct.log2_num_rows > rlweStruct.parameters.LogN() {
 		log_num_cts = rlweStruct.log2_num_rows - rlweStruct.parameters.LogN()
