@@ -138,6 +138,11 @@ func (r *results) Client_PIR_Response(b *testing.B, client_PIR_Protocol PIR_Prot
 	db_element_size := row_size
 	for k := 0; k < db_element_size; k++ {
 		// incorrect response
+		if db[compared_query][k] != response_bytes[k] {
+			b.Error("incorrect response for byte", k, "expected:", db[compared_query][k], "actual:", response_bytes[k])
+		}
+	}
+	for k := 0; k < db_element_size; k++ {
 		require.Equal(b, db[compared_query][k], response_bytes[k])
 	}
 }
@@ -181,14 +186,14 @@ func Benchmark_PIR_for_Routing_Table(b *testing.B) {
 
 	row_size := 20 * 256
 
-	runs := 1 // b.N
-	modes := []string{Basic_Paillier, RLWE_All_Keys, RLWE_Whispir_2_Keys, RLWE_Whispir_3_Keys}
+	runs := 1                         // b.N
+	modes := []string{Basic_Paillier} //, RLWE_All_Keys, RLWE_Whispir_2_Keys, RLWE_Whispir_3_Keys}
 	experimentName := "peerRouting-"
 	resultFiles := createResultsFiles(b, experimentName, modes)
 
 	peerRoutingResultsStats := make([][]resultsStats, len(modes))
 
-	for log_2_db_rows := 4; log_2_db_rows <= 8; log_2_db_rows++ {
+	for log_2_db_rows := 4; log_2_db_rows <= 4; log_2_db_rows++ {
 		for i, mode := range modes {
 			fmt.Println("---- mode: ", mode)
 			s := resultsStats{

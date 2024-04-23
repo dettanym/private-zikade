@@ -91,11 +91,11 @@ func (paillierProtocol *BasicPaillier_PIR_Protocol) marshalRequestToPB() (*pb.PI
 		},
 		EncryptedPaillierQuery: query_bytes,
 	}
-	//queryLen := 0
-	//for _, query := range query_bytes {
-	//	queryLen += len(query)
-	//}
-	//fmt.Println(" - marshalling phase: request total length: ", queryLen+len(paillierPublicKey.N)+len(paillierPublicKey.G))
+	queryLen := 0
+	for _, query := range query_bytes {
+		queryLen += len(query)
+	}
+	fmt.Println(" - marshalling phase: request total length: ", queryLen+len(paillierPublicKey.N)+len(paillierPublicKey.G))
 
 	return &pirRequest, nil
 }
@@ -201,11 +201,11 @@ func (paillierProtocol *BasicPaillier_PIR_Protocol) marshalResponseToPB() (*pb.P
 	pirResponse := pb.PIR_Response{
 		EncryptedPaillierResponse: response_bytes,
 	}
-	//resLen := 0
-	//for _, res := range response_bytes {
-	//	resLen += len(res)
-	//}
-	//fmt.Println(" - marshalling phase: response total length: ", resLen)
+	resLen := 0
+	for _, res := range response_bytes {
+		resLen += len(res)
+	}
+	fmt.Println(" - marshalling phase: response total length: ", resLen)
 	return &pirResponse, nil
 }
 
