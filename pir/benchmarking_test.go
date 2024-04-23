@@ -155,7 +155,7 @@ func (r *results) Server_PIR(b *testing.B, log2_number_of_rows int, mode string,
 	assert.NoError(b, err)
 	elapsed := time.Since(start_time)
 	r.serverRuntime = elapsed.Milliseconds()
-	fmt.Println("- server PIR time:", elapsed)
+	fmt.Println("- server PIR time:", elapsed.Milliseconds())
 	return response
 }
 

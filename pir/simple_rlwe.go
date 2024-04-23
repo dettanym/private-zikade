@@ -320,7 +320,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 				return nil, err
 			}
 			elapsed := time.Since(start_time)
-			fmt.Println("- time elapsed for key expansion: \t\t\t\t\t\t\t", elapsed)
+			fmt.Println("- time elapsed for key expansion: \t\t\t\t\t\t\t", elapsed.Milliseconds())
 
 		} else { // rlweStruct.log2_num_rows == log2_num_cts
 			indicator_bits_slice = []*rlwe.Ciphertext{&encrypted_query[i]}
@@ -334,7 +334,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 		return nil, err
 	}
 	duration := time.Since(start)
-	fmt.Println("- time elapsed for transformDBToPlaintextForm is: \t\t\t", duration)
+	fmt.Println("- time elapsed for transformDBToPlaintextForm is: \t\t\t", duration.Milliseconds())
 
 	num_db_rows := len(database)
 	num_rows := 1 << rlweStruct.log2_num_rows
@@ -353,9 +353,9 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 		return nil, fmt.Errorf("initialize this struct with log2_num_rows as greater than or equal to the log of the number of rows in the DB")
 	}
 	duration = time.Since(start)
-	fmt.Println("- time elapsed for evaluator.Add over indicator bits: is: \t", duration)
+	fmt.Println("- time elapsed for evaluator.Add over indicator bits: is: \t", duration.Nanoseconds())
 
-	start = time.Now()
+	// start = time.Now()
 	for k := 0; k < len(rlweStruct.response_ciphertexts); k++ {
 		for i := 0; i < num_db_rows; i++ {
 
