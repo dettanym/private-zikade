@@ -47,6 +47,9 @@ func getRLWEPIRResponseSize(resp *pb.PIR_Response) int {
 }
 
 func TestE2E(t *testing.T) {
+	// ensures that all CPUs are used
+	fmt.Println(runtime.GOMAXPROCS(runtime.NumCPU()))
+
 	log2_number_of_rows_str := os.Getenv("LOG2_NUMBER_OF_ROWS")
 	log2_number_of_rows, err := strconv.Atoi(log2_number_of_rows_str)
 	assert.NoError(t, err)
