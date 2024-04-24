@@ -216,7 +216,7 @@ func Benchmark_PIR_for_Provider_Routing(b *testing.B) {
 	// ensures that all CPUs are used
 	fmt.Println(runtime.GOMAXPROCS(runtime.NumCPU()))
 
-	runs := 1 // b.N
+	runs := 10 // b.N
 
 	// These numbers are derived using the script
 	maxBinLoad := map[int]int{
