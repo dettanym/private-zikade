@@ -152,6 +152,8 @@ func (paillierProtocol *BasicPaillier_PIR_Protocol) GenerateRequestFromQuery(req
 		// }
 
 		// Beck way
+		// TODO: This seed is set insecurely.
+		//  Also, it needs to be sent to the client.
 		seededRand := rand.New(rand.NewSource(42 + int64(i)))
 		randomPaillier = new(big.Int).Rand(seededRand, Nsq)
 		decrypted, err := paillierProtocol.secret_key.Decrypt(randomPaillier)
