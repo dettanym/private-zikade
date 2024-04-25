@@ -70,6 +70,7 @@ func TestE2E(t *testing.T) {
 	}
 
 	b := testing.B{N: 1}
+	toParallelizeServerResponseComputation = true
 	s.end_to_end_PIR(&b, log2_number_of_rows, log2_num_db_rows, mode_str, row_size)
 }
 
