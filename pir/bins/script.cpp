@@ -7,7 +7,7 @@
 
 using namespace std;
 
-void run_max_load(){
+void run_max_load(bool isPaillier){
     uint64_t RUNS = ((uint64_t)1 << 30);
 
     uint64_t bins;
@@ -37,19 +37,12 @@ void run_max_load(){
         188416,
         196608
     };
-
-    if (argc == 1)
-        printf("\nNo CLI arg passed\n");
-
-    if (argc >= 2) {
-        if argv[1] == "paillier" {
-            bins = 256;
-        }
-        else {
-            bins = 4096
-        }
-    }
-
+   if (isPaillier) {
+        bins = 256;
+   }
+   else {
+        bins = 4096;
+   }
     int pairs = 24;
     int answer[pairs];
     for (int i=0;i<pairs;i++){
@@ -70,7 +63,8 @@ void run_max_load(){
                         cout << "Reached the mile stone " << milestone << endl;
                         milestone *= 2;
                         ofstream result_file;
-                        if argv[1] == "paillier" {
+                        string filename;
+                        if (isPaillier) {
                             filename = "simulation-paillier.csv";
                         }
                         else {
@@ -111,6 +105,23 @@ void run_max_load(){
     }
 }
 
-int main(){
-    run_max_load();
+int main(int argc, char* argv[]){
+    if (argc == 1)
+        printf("\nPass in which PIR scheme to compute bins for: rlwe or paillier\n");
+
+    bool isPaillier;
+    if (argc >= 2) {
+        if (argv[1] == "paillier") {
+            isPaillier = true;
+        }
+        else if (argv[1] == "rlwe") {
+            isPaillier = false;
+        }
+        else {
+            printf("\nCan only compute bin loads for rlwe or paillier\n");
+            return -1;
+        }
+    }
+
+    run_max_load(isPaillier);
 }
