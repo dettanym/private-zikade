@@ -106,8 +106,10 @@ void run_max_load(bool isPaillier){
 }
 
 int main(int argc, char* argv[]){
-    if (argc == 1)
+    if (argc == 1) {
         printf("\nPass in which PIR scheme to compute bins for: rlwe or paillier\n");
+        return -1;
+    }
 
     bool isPaillier;
     if (argc >= 2) {
