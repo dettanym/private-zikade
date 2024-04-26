@@ -112,11 +112,12 @@ int main(int argc, char* argv[]){
     }
 
     bool isPaillier;
+    std::string argv1 = argv[1];
     if (argc >= 2) {
-        if (argv[1] == "paillier") {
+        if (argv1 == "paillier") {
             isPaillier = true;
         }
-        else if (argv[1] == "rlwe") {
+        else if (argv1 == "rlwe") {
             isPaillier = false;
         }
         else {
