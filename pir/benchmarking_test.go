@@ -188,7 +188,7 @@ func Benchmark_PIR_for_Routing_Table(b *testing.B) {
 	// ensures that all CPUs are used
 	fmt.Println(runtime.GOMAXPROCS(runtime.NumCPU()))
 
-	row_size := 20 * 256
+	row_size := 20 * 81 // 81 is the size of a multiaddress, 20 multiaddress in each row
 
 	runs := 10 // b.N
 	modes := []string{Basic_Paillier, RLWE_All_Keys, RLWE_Whispir_2_Keys, RLWE_Whispir_3_Keys}
@@ -258,12 +258,13 @@ func Benchmark_PIR_for_Provider_Routing(b *testing.B) {
 	cidsMax := 200000
 	cidsStep := cidsMin
 	providerRoutingResultsStats := make([][]resultsStats, len(modes))
+	multiaddress_size_in_bytes := 100 // 81 bytes + some overhead
 
 	for num_cids := cidsMin; num_cids < cidsMax; num_cids += cidsStep {
 
 		log_2_db_rows := 12
 
-		row_size := maxBinLoad[num_cids] + 2 // Adding 2, just to be safe
+		row_size := multiaddress_size_in_bytes * (maxBinLoad[num_cids] + 2) // Adding 2, just to be safe
 
 		for i, mode := range modes {
 			fmt.Println("---- mode: ", mode)
