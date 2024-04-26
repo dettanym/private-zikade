@@ -1,6 +1,7 @@
 package pir
 
 import (
+	"errors"
 	"fmt"
 	"math/rand"
 	"os"
@@ -250,7 +251,7 @@ func Benchmark_PIR_for_Provider_Routing(b *testing.B) {
 		196608: 99,
 	}
 
-	modes := []string{RLWE_All_Keys, RLWE_Whispir_2_Keys, RLWE_Whispir_3_Keys}
+	modes := []string{Basic_Paillier, RLWE_All_Keys, RLWE_Whispir_2_Keys, RLWE_Whispir_3_Keys}
 	experimentName := "providerRouting-"
 	resultFiles := createResultsFiles(b, experimentName, modes)
 
@@ -267,13 +268,17 @@ func Benchmark_PIR_for_Provider_Routing(b *testing.B) {
 		row_size := multiaddress_size_in_bytes * (maxBinLoad[num_cids] + 2) // Adding 2, just to be safe
 
 		for i, mode := range modes {
+			mode_dependent_runs := runs
+			if mode == Basic_Paillier {
+				mode_dependent_runs = 1
+			}
 			fmt.Println("---- mode: ", mode)
 			fmt.Println("- num_cids: ", num_cids)
 			fmt.Println("- RowSize: ", row_size)
 			s := resultsStats{
 				NumRows: num_cids,
 				RowSize: row_size,
-				Runs:    runs,
+				Runs:    mode_dependent_runs,
 			}
 			s.Mode = getMode(mode)
 			s.end_to_end_PIR(b, log_2_db_rows, log_2_db_rows, mode, row_size)
@@ -348,7 +353,13 @@ func createResultsFiles(b *testing.B, experimentName string, modes []string) []*
 	resultFiles := make([]*os.File, len(modes))
 
 	timestamp := time.Now().Format(time.RFC3339)
-	filePrefix := experimentName + timestamp
+	path := "../csv_results/"
+	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+		err := os.Mkdir(path, os.ModePerm)
+		require.NoError(b, err)
+	}
+
+	filePrefix := path + experimentName + timestamp
 	for i, mode := range modes {
 		modeStr := getMode(mode)
 		filename := filePrefix + modeStr + ".csv"
