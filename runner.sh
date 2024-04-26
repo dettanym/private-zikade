@@ -12,13 +12,13 @@ docker run --rm -ti \
   golang \
     go test \
       -test.v \
-      - test.timeout 99999s \
+      -test.timeout 99999s \
       -test.bench '^\QBenchmark_PIR_for_Provider_Routing\E$' \
       -test.run '^$' \
       ./pir/... && \
     go test \
       -test.v \
-      - test.timeout 99999s \
+      -test.timeout 99999s \
       -test.bench '^\Benchmark_PIR_for_Routing_Table\E$' \
       -test.run '^$' \
       ./pir/...
