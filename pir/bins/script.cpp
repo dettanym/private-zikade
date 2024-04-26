@@ -10,7 +10,7 @@ using namespace std;
 void run_max_load(){
     uint64_t RUNS = ((uint64_t)1 << 30);
 
-    uint64_t bins = 4096;
+    uint64_t bins;
     uint64_t balls[] = {
         8192,
         16384,
@@ -38,6 +38,18 @@ void run_max_load(){
         196608
     };
 
+    if (argc == 1)
+        printf("\nNo CLI arg passed\n");
+
+    if (argc >= 2) {
+        if argv[1] == "paillier" {
+            bins = 256;
+        }
+        else {
+            bins = 4096
+        }
+    }
+
     int pairs = 24;
     int answer[pairs];
     for (int i=0;i<pairs;i++){
@@ -58,7 +70,13 @@ void run_max_load(){
                         cout << "Reached the mile stone " << milestone << endl;
                         milestone *= 2;
                         ofstream result_file;
-                        result_file.open("simulation.csv", ios::app);
+                        if argv[1] == "paillier" {
+                            filename = "simulation-paillier.csv";
+                        }
+                        else {
+                            filename = "simulation-rlwe.csv";
+                        }
+                        result_file.open(filename, ios::app);
                         for (int i=0;i<pairs;i++){
                             result_file << milestone << ","
                                         << bins << "," 
