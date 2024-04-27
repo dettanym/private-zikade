@@ -224,7 +224,7 @@ func Benchmark_PIR_for_Provider_Routing(b *testing.B) {
 	runs := 10 // b.N
 
 	// These numbers are derived using the script
-	maxBinLoad := map[int]int{
+	maxBinLoadRLWE := map[int]int{
 		8192:   17,
 		16384:  22,
 		24576:  27,
@@ -250,8 +250,34 @@ func Benchmark_PIR_for_Provider_Routing(b *testing.B) {
 		188416: 95,
 		196608: 99,
 	}
+	maxBinLoadPaillier := map[int]int{
+		8192:   70,
+		16384:  118,
+		24576:  159,
+		32768:  198,
+		40960:  240,
+		49152:  279,
+		57344:  318,
+		65536:  358,
+		73728:  396,
+		81920:  440,
+		90112:  466,
+		98304:  513,
+		106496: 541,
+		114688: 581,
+		122880: 625,
+		131072: 664,
+		139264: 692,
+		147456: 734,
+		155648: 760,
+		163840: 804,
+		172032: 838,
+		180224: 873,
+		188416: 912,
+		196608: 933,
+	}
 
-	modes := []string{RLWE_All_Keys, RLWE_Whispir_2_Keys, RLWE_Whispir_3_Keys}
+	modes := []string{RLWE_All_Keys, RLWE_Whispir_2_Keys, RLWE_Whispir_3_Keys} // Basic_Paillier
 	experimentName := "providerRouting-"
 	resultFiles := createResultsFiles(b, experimentName, modes)
 
@@ -265,16 +291,26 @@ func Benchmark_PIR_for_Provider_Routing(b *testing.B) {
 
 		log_2_db_rows := 12
 
-		row_size := multiaddress_size_in_bytes * (maxBinLoad[num_cids] + 2) // Adding 2, just to be safe
-
 		for i, mode := range modes {
 			fmt.Println("---- mode: ", mode)
 			fmt.Println("- num_cids: ", num_cids)
+
+			var row_size int
+			if mode == Basic_Paillier {
+				row_size = multiaddress_size_in_bytes * (maxBinLoadPaillier[num_cids] + 2)
+			} else {
+				row_size = multiaddress_size_in_bytes * (maxBinLoadRLWE[num_cids] + 2) // Adding 2, just to be safe
+			}
+
 			fmt.Println("- RowSize: ", row_size)
 			s := resultsStats{
 				NumRows: num_cids,
 				RowSize: row_size,
-				Runs:    runs,
+			}
+			if mode == Basic_Paillier {
+				s.Runs = 1
+			} else {
+				s.Runs = runs
 			}
 			s.Mode = getMode(mode)
 			s.end_to_end_PIR(b, log_2_db_rows, log_2_db_rows, mode, row_size)
