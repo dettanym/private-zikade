@@ -314,3 +314,63 @@ func (paillierProtocol *BasicPaillier_PIR_Protocol) ProcessResponseToPlaintext(r
 
 	return all_bytes, nil
 }
+
+func (paillierProtocol *BasicPaillier_PIR_Protocol) computeResponseCtsInParallel(encrypted_query []*big.Int, num_db_rows int) {
+	var wg sync.WaitGroup
+	var temp = make([][]*big.Int, num_db_rows)
+	for index := range temp {
+		temp[index] = make([]*big.Int, paillierProtocol.needed_cts)
+	}
+
+	for j := 0; j < paillierProtocol.needed_cts; j++ {
+		for i := 0; i < num_db_rows; i++ {
+			wg.Add(1)
+			go func(i int, j int) {
+				defer wg.Done()
+				temp[i][j] = paillierProtocol.public_key.Mul(encrypted_query[i], paillierProtocol.plaintextDB[i][j])
+			}(i, j)
+		}
+	}
+	wg.Wait()
+
+	num_iterations := int(math.Log2(float64(num_db_rows)))
+	// run the rest of this num_iterations times
+	ip := temp
+	for i := 0; i < num_iterations; i++ {
+		ip = paillierProtocol.parallelizedAggregator(ip)
+	}
+	op := ip
+	paillierProtocol.response_ciphertexts = op[0]
+}
+
+func (paillierProtocol *BasicPaillier_PIR_Protocol) parallelizedAggregator(temp [][]*big.Int) [][]*big.Int {
+	var wg sync.WaitGroup
+
+	num_db_rows := len(temp)
+
+	// set a smaller array
+	var op = make([][]*big.Int, int(math.Ceil((float64(num_db_rows))/2)))
+	for index := range op {
+		op[index] = make([]*big.Int, paillierProtocol.needed_cts)
+	}
+
+	paillierProtocol.response_ciphertexts = make([]*big.Int, paillierProtocol.needed_cts)
+	channels := make([]chan *big.Int, paillierProtocol.needed_cts)
+	for j := 0; j < paillierProtocol.needed_cts; j++ {
+		for i := 1; i < num_db_rows; i += 2 {
+			wg.Add(1)
+			go func(i int, j int, c chan *big.Int) {
+				defer wg.Done()
+				op[(i-1)/2][j] = paillierProtocol.public_key.AddEncrypted(temp[i][j], temp[i-1][j])
+			}(i, j, channels[j])
+		}
+	}
+	wg.Wait()
+
+	for j := 0; j < paillierProtocol.needed_cts; j++ {
+		if num_db_rows%2 == 1 {
+			op[len(op)-1][j] = temp[num_db_rows-1][j]
+		}
+	}
+	return op
+}
