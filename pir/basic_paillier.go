@@ -254,36 +254,50 @@ func (paillierProtocol *BasicPaillier_PIR_Protocol) ProcessRequestAndReturnRespo
 	duration = time.Since(start)
 	fmt.Println("- time elapsed for public_key.AddEncrypted: is: \t", duration.Milliseconds())
 
-	var wg sync.WaitGroup
-	var mu sync.Mutex
+	// start = time.Now()
+	isParallel := false
+	if isParallel {
+		paillierProtocol.computeResponseCtsInParallel(encrypted_query, num_db_rows)
+	} else {
+		var wg sync.WaitGroup
+		var mu sync.Mutex
 
-	paillierProtocol.response_ciphertexts = make([]*big.Int, paillierProtocol.needed_cts)
-	initialized := make([]bool, paillierProtocol.needed_cts)
+		paillierProtocol.response_ciphertexts = make([]*big.Int, paillierProtocol.needed_cts)
+		initialized := make([]bool, paillierProtocol.needed_cts)
 
-	for j := 0; j < paillierProtocol.needed_cts; j++ {
-		for i := 0; i < num_db_rows; i++ {
-			// encryptedMul := paillierProtocol.public_key.Mul(encrypted_query[i], paillierProtocol.plaintextDB[i][j])
-			// if i == 0 {
-			// 	paillierProtocol.response_ciphertexts[j] = encryptedMul
-			// } else {
-			// 	paillierProtocol.response_ciphertexts[j] = paillierProtocol.public_key.AddEncrypted(encryptedMul, paillierProtocol.response_ciphertexts[j])
-			// }
-			wg.Add(1)
-			go func(i, j int) {
-				defer wg.Done()
-				encryptedMul := paillierProtocol.public_key.Mul(encrypted_query[i], paillierProtocol.plaintextDB[i][j])
-				mu.Lock()
-				defer mu.Unlock()
-				if !initialized[j] {
-					paillierProtocol.response_ciphertexts[j] = encryptedMul
-					initialized[j] = true
-				} else {
-					paillierProtocol.response_ciphertexts[j] = paillierProtocol.public_key.AddEncrypted(encryptedMul, paillierProtocol.response_ciphertexts[j])
-				}
-			}(i, j)
+		for j := 0; j < paillierProtocol.needed_cts; j++ {
+			for i := 0; i < num_db_rows; i++ {
+				wg.Add(1)
+				go func(i, j int) {
+					defer wg.Done()
+					encryptedMul := paillierProtocol.public_key.Mul(encrypted_query[i], paillierProtocol.plaintextDB[i][j])
+					mu.Lock()
+					defer mu.Unlock()
+					if !initialized[j] {
+						paillierProtocol.response_ciphertexts[j] = encryptedMul
+						initialized[j] = true
+					} else {
+						paillierProtocol.response_ciphertexts[j] = paillierProtocol.public_key.AddEncrypted(encryptedMul, paillierProtocol.response_ciphertexts[j])
+					}
+				}(i, j)
+			}
 		}
+		wg.Wait()
+		/*
+			paillierProtocol.response_ciphertexts = make([]*big.Int, paillierProtocol.needed_cts)
+			for j := 0; j < paillierProtocol.needed_cts; j++ {
+				for i := 0; i < num_db_rows; i++ {
+					encryptedMul := paillierProtocol.public_key.Mul(encrypted_query[i], paillierProtocol.plaintextDB[i][j])
+					if i == 0 {
+						paillierProtocol.response_ciphertexts[j] = encryptedMul
+					} else {
+						paillierProtocol.response_ciphertexts[j] = paillierProtocol.public_key.AddEncrypted(encryptedMul, paillierProtocol.response_ciphertexts[j])
+					}
+				}
+			}*/
 	}
-	wg.Wait()
+	// duration = time.Since(start)
+	// fmt.Println("- time elapsed for computing response is: \t", duration.Milliseconds())
 
 	response, err := paillierProtocol.marshalResponseToPB()
 	if err != nil {
