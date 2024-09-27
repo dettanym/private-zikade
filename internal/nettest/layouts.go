@@ -74,7 +74,15 @@ type Neighbour_Data struct {
 	Errors     string   `json:"ErrorBits,omitempty"`
 }
 
-func GenerateCrawledTopology(clk clock.Clock, useNormalizedRT bool) (*Topology, []*Peer, error) {
+type PeerWithTwoRTs struct {
+	NodeID                 kadt.PeerID
+	Router                 *Router
+	TrieRoutingTable       routing.RoutingTableCpl[kadt.Key, kadt.PeerID]
+	NormalizedRoutingTable routing.RoutingTableCplNormalized[kadt.Key, kadt.PeerID]
+}
+
+func GenerateCrawledTopology(clk clock.Clock) (*Topology, []*PeerWithTwoRTs, error) {
+	bucketsize := 10
 	// this function will define the topology w.r.t how peers are distributed from the crawled data
 	// read json file in nettest
 	pwd, _ := os.Getwd()
@@ -93,7 +101,7 @@ func GenerateCrawledTopology(clk clock.Clock, useNormalizedRT bool) (*Topology, 
 	fmt.Println("Number of nodes: ", len(neighbours))
 	fmt.Println(neighbours[0].PeerID)
 
-	nodes := make([]*Peer, len(neighbours))
+	nodes := make([]*PeerWithTwoRTs, len(neighbours))
 	top := NewTopology(clk)
 	nodeIDs := make([]string, len(neighbours))
 	// loop through neighbours array
@@ -106,44 +114,40 @@ func GenerateCrawledTopology(clk clock.Clock, useNormalizedRT bool) (*Topology, 
 		pid, err := peer.Decode(neighbours[i].PeerID)
 		id := kadt.PeerID(pid)
 		nodeIDs[i] = neighbours[i].PeerID
-		var rt routing.RoutingTableCpl[kadt.Key, kadt.PeerID]
-		if useNormalizedRT {
-			bucketSize := 20
-			rt = normalizedrt.New[kadt.Key, kadt.PeerID](id, bucketSize)
-		} else {
-			rt, err = triert.New[kadt.Key, kadt.PeerID](id, nil)
-			if err != nil {
-				return nil, nil, err
-			}
+
+		trieRoutingTable, err := triert.New[kadt.Key, kadt.PeerID](id, nil)
+		if err != nil {
+			return nil, nil, err
 		}
-		nodes[i] = &Peer{
-			NodeID:       id,
-			Router:       NewRouter(id, top),
-			RoutingTable: rt,
+		nodes[i] = &PeerWithTwoRTs{
+			NodeID:                 id,
+			Router:                 NewRouter(id, top),
+			TrieRoutingTable:       trieRoutingTable,
+			NormalizedRoutingTable: normalizedrt.New[kadt.Key, kadt.PeerID](id, bucketsize),
 		}
 	}
 
 	numberOfPeersWithNonEmptyRTs := 0
 	// define the network topology with links between nodes and their neighbours from the crawled data
 	for i := range nodes {
-		numberOfNeighboursAdded := 0
+		numberOfNeighboursAddedToNormalizedRT := 0
+		numberOfNeighboursAddedToTrieRT := 0
 		for j := range neighbours[i].Neighbours {
 			// search for index of node with peerID neighbours[i]["neighbours"][j]
 			// and connect the nodes. if index is not found, do nothing with that neighbour -- not in list of nodes
 			k := slices.Index(nodeIDs, neighbours[i].Neighbours[j])
 			if k != -1 {
-				top.ConnectPeers(nodes[i], nodes[k])
-				err := nodes[i].Router.AddToPeerStore(context.Background(), nodes[k].NodeID)
-				if err != nil {
-					return nil, nil, fmt.Errorf("error in adding a neighbour to node's simulated Router's PeerStore. Error: %s", err)
-				}
-				added := nodes[i].RoutingTable.AddNode(nodes[k].NodeID)
+				added := nodes[i].TrieRoutingTable.AddNode(nodes[k].NodeID)
 				if added {
-					numberOfNeighboursAdded += 1
+					numberOfNeighboursAddedToTrieRT += 1
+				}
+				added = nodes[i].NormalizedRoutingTable.AddNode(nodes[k].NodeID)
+				if added {
+					numberOfNeighboursAddedToNormalizedRT += 1
 				}
 			}
 		}
-		if numberOfNeighboursAdded > 0 {
+		if numberOfNeighboursAddedToTrieRT > 0 && numberOfNeighboursAddedToNormalizedRT > 0 {
 			numberOfPeersWithNonEmptyRTs += 1
 		}
 	}
