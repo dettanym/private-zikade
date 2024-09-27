@@ -336,13 +336,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 	elapsed := time.Since(start_time)
 	fmt.Println("- time elapsed for key expansion (ms): \t\t\t\t\t\t\t", elapsed.Milliseconds())
 
-	start := time.Now()
-	err = rlweStruct.transformDBToPlaintextForm(database)
-	if err != nil {
-		return nil, err
-	}
-	duration := time.Since(start)
-	fmt.Println("- time elapsed for transformDBToPlaintextForm (ms) is: \t\t\t", duration.Milliseconds())
+	rlweStruct.initializeResponseCTs(database)
 
 	num_db_rows := len(database)
 	num_rows := 1 << rlweStruct.log2_num_rows
