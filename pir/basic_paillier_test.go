@@ -105,9 +105,9 @@ func TestBasicPIR_with_Paillier_ProcessRequestAndReturnResponse(t *testing.T) {
 
 	// server
 	log_2_num_db_rows := 4
-	num_db_rows := 1 << log_2_num_db_rows
+	num_db_rows := 1<<log_2_num_db_rows + 1
 	db := make([][]byte, num_db_rows)
-	db_element_size := 5
+	db_element_size := 128
 	response := &pb.PIR_Response{}
 	{
 		server_PIR_Protocol := INSECURE_NewBasicPaillier_PIR_Protocol_INSECURE(log_2_num_rows)
