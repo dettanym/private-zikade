@@ -120,7 +120,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) initializeResponseCTs(database [][]by
 }
 
 // encodes the rows of the database into the coefficients of a plaintext
-func (rlweStruct *SimpleRLWE_PIR_Protocol) transformDBToPlaintextForm(database [][]byte) error {
+func (rlweStruct *SimpleRLWE_PIR_Protocol) TransformDBToPlaintextForm(database [][]byte) error {
 	rlweStruct.initializeResponseCTs(database)
 	num_db_rows := len(database)
 
