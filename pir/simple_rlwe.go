@@ -297,10 +297,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessResponseToPlaintext(res *pb.PI
 }
 
 func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(request *pb.PIR_Request, database [][]byte) (*pb.PIR_Response, error) {
-
-	// TODO: @Miti Replace logging the time with Go Benchmarks
-	//   https://pkg.go.dev/testing#hdr-Benchmarks
-	// start := time.Now()
+	defer timeTrack(time.Now())
 
 	err := rlweStruct.unmarshallRequestFromPB(request)
 	if err != nil {
@@ -321,6 +318,8 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 	// generate indicator vector using encrypted query, evaluation keys
 	var indicator_bits []*rlwe.Ciphertext
 	start_time := time.Now()
+	// not parallelized since the number of *query* ciphertexts will be one since we're parameterizing RLWE such
+	//  that we only need one ciphertext to represent one query over B bins
 	for i := range encrypted_query {
 		var indicator_bits_slice []*rlwe.Ciphertext
 		if rlweStruct.log2_num_rows-log2_num_cts > 0 {
@@ -341,7 +340,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 	num_db_rows := len(database)
 	num_rows := 1 << rlweStruct.log2_num_rows
 
-	start = time.Now()
+	start := time.Now()
 	// This if statement cause the algorithm to return the last row of the database,
 	// if the query is larger than the number of rows
 	if num_rows > num_db_rows {
@@ -354,7 +353,7 @@ func (rlweStruct *SimpleRLWE_PIR_Protocol) ProcessRequestAndReturnResponse(reque
 	} else if num_rows < num_db_rows {
 		return nil, fmt.Errorf("initialize this struct with log2_num_rows as greater than or equal to the log of the number of rows in the DB")
 	}
-	duration = time.Since(start)
+	duration := time.Since(start)
 	fmt.Println("- time elapsed for evaluator.Add over indicator bits (ns): is: \t", duration.Nanoseconds())
 
 	if !toParallelizeServerResponseComputation {
