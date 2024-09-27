@@ -39,6 +39,9 @@ func TestPIR_Protocol_Simple_RLWE_ProcessRequestAndReturnResponse(t *testing.T) 
 		db[i] = make([]byte, 20*256)
 	}
 
+	err = chosen_PIR_Protocol.TransformDBToPlaintextForm(db)
+	require.NoError(t, err)
+
 	_, err = chosen_PIR_Protocol.ProcessRequestAndReturnResponse(pirRequest, db)
 	require.NoError(t, err)
 
@@ -94,7 +97,8 @@ func TestPIR_ProcessRequestAndReturnResponse_Correctness(t *testing.T) {
 				db[i][j] = byte(rand.New(seed).Intn(256))
 			}
 		}
-
+		err := server_PIR_Protocol.TransformDBToPlaintextForm(db)
+		require.NoError(t, err)
 		response, err = server_PIR_Protocol.ProcessRequestAndReturnResponse(pirRequest, db)
 		require.NoError(t, err)
 
@@ -140,6 +144,8 @@ func TestPIR_ProcessRequestAndReturnResponse_Correctness_LessThan256Rows(t *test
 				db[i][j] = byte(rand.New(seed).Intn(256))
 			}
 		}
+		err := server_PIR_Protocol.TransformDBToPlaintextForm(db)
+		require.NoError(t, err)
 
 		response, err = server_PIR_Protocol.ProcessRequestAndReturnResponse(pirRequest, db)
 		require.NoError(t, err)
@@ -188,6 +194,9 @@ func Benchmark_Key_Sizes(b *testing.B) {
 				db[i][j] = 1
 			}
 		}
+
+		err := server_PIR_Protocol.TransformDBToPlaintextForm(db)
+		require.NoError(b, err)
 
 		response, err = server_PIR_Protocol.ProcessRequestAndReturnResponse(pirRequest, db)
 		require.NoError(b, err)
