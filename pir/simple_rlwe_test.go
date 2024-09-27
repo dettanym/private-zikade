@@ -2,6 +2,7 @@ package pir
 
 import (
 	"math/rand"
+	"runtime"
 	"testing"
 	"time"
 
@@ -71,6 +72,7 @@ func TestPlaintextToBytesArray(t *testing.T) {
 }
 
 func TestPIR_ProcessRequestAndReturnResponse_Correctness(t *testing.T) {
+	runtime.GOMAXPROCS(runtime.NumCPU() - 2)
 
 	// client query generation
 	log2_number_of_rows := 12
