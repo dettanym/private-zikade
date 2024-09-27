@@ -3,6 +3,7 @@ package pir
 import (
 	"math/big"
 	"math/rand"
+	"runtime"
 	"testing"
 	"time"
 
@@ -142,6 +143,7 @@ func TestBasicPIR_with_Paillier_ProcessRequestAndReturnResponse(t *testing.T) {
 }
 
 func BenchmarkBasicPIR_with_Paillier_ProcessRequestAndReturnResponse(b *testing.B) {
+	runtime.GOMAXPROCS(runtime.NumCPU() - 2)
 	log_2_num_rows := 8
 	client_PIR_Protocol := NewBasicPaillier_PIR_Protocol(log_2_num_rows)
 	err := client_PIR_Protocol.CreatePrivateKeyMaterial()
