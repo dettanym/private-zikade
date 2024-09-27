@@ -2,11 +2,11 @@ package pir
 
 import (
 	"fmt"
+	"math"
 	"math/big"
 	"math/rand"
-	"time"
-
 	"sync"
+	"time"
 
 	"github.com/lucasmenendez/gopaillier/pkg/paillier"
 	"github.com/plprobelab/zikade/pb"
@@ -101,6 +101,7 @@ func (paillierProtocol *BasicPaillier_PIR_Protocol) marshalRequestToPB() (*pb.PI
 }
 
 func (paillierProtocol *BasicPaillier_PIR_Protocol) unmarshallRequestFromPB(req *pb.PIR_Request) error {
+	defer timeTrack(time.Now())
 	paillierProtocol.log2_num_rows = int(req.Log2NumRows)
 
 	switch schemeDependent := req.SchemeDependent.(type) {
@@ -220,6 +221,7 @@ func (paillierProtocol *BasicPaillier_PIR_Protocol) unmarshallResponseFromPB(res
 }
 
 func (paillierProtocol *BasicPaillier_PIR_Protocol) ProcessRequestAndReturnResponse(request *pb.PIR_Request, database [][]byte) (*pb.PIR_Response, error) {
+	defer timeTrack(time.Now())
 
 	// start := time.Now()
 
@@ -252,9 +254,9 @@ func (paillierProtocol *BasicPaillier_PIR_Protocol) ProcessRequestAndReturnRespo
 		return nil, fmt.Errorf("initialize this struct with log2_num_rows as greater than or equal to the log of the number of rows in the DB")
 	}
 	duration = time.Since(start)
-	fmt.Println("- time elapsed for public_key.AddEncrypted: is: \t", duration.Milliseconds())
+	fmt.Println("- time elapsed for public_key.AddEncrypted: is: \t", duration)
 
-	// start = time.Now()
+	start = time.Now()
 	isParallel := false
 	if isParallel {
 		paillierProtocol.computeResponseCtsInParallel(encrypted_query, num_db_rows)
@@ -296,16 +298,17 @@ func (paillierProtocol *BasicPaillier_PIR_Protocol) ProcessRequestAndReturnRespo
 				}
 			}*/
 	}
-	// duration = time.Since(start)
-	// fmt.Println("- time elapsed for computing response is: \t", duration.Milliseconds())
+	duration = time.Since(start)
+	fmt.Println("- time elapsed for computing response is: \t", duration)
 
+	// start = time.Now()
 	response, err := paillierProtocol.marshalResponseToPB()
 	if err != nil {
 		return nil, err
 	}
 
 	// elapsed := time.Since(start)
-	// log.Printf("elapsed time: %v", elapsed)
+	// log.Printf("elapsed time for marshalling response: %v", elapsed)
 
 	return response, nil
 }
@@ -387,4 +390,9 @@ func (paillierProtocol *BasicPaillier_PIR_Protocol) parallelizedAggregator(temp 
 		}
 	}
 	return op
+}
+
+func timeTrack(start time.Time) {
+	elapsed := time.Since(start)
+	fmt.Println("time lapsed is: ", elapsed)
 }
