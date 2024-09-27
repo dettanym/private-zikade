@@ -2,6 +2,7 @@ package coord
 
 import (
 	"fmt"
+	"golang.org/x/exp/maps"
 	"sort"
 	"testing"
 
@@ -16,6 +17,7 @@ import (
 )
 
 func TestRoutingNormVsTrie(t *testing.T) {
+	N := 5000
 	clk := clock.NewMock()
 	_, nodesWithTwoRTs, err := nettest.GenerateCrawledTopology(clk)
 	require.NoError(t, err)
@@ -35,9 +37,12 @@ func TestRoutingNormVsTrie(t *testing.T) {
 	seededrand := rand.New(rand.NewSource(2024))
 	var targetIndex int
 	var targets []int
-	var differences []int
-	var hopCounts []int
-	for i := 0; i < 5000; i++ {
+	type hopCount struct {
+		NormalizedHops int
+		TrieHops       int
+	}
+	var hopCountFrequencies = map[hopCount]int{}
+	for i := 0; i < N; i++ {
 
 		targetIndex = seededrand.Intn(len(nodesWithTwoRTs) - 1)
 		// while targetIndex is in targets list, generate new random integer
@@ -55,26 +60,44 @@ func TestRoutingNormVsTrie(t *testing.T) {
 
 		hopCountNormalized, err := doLookupSimplified(nodesWithTwoRTs, nodeIDs, target, clientPeerID, true)
 		require.NoError(t, err)
-
+		difference := hopCountNormalized - hopCountTrie
 		// print difference in hop count
 		fmt.Println("Norm: ", hopCountNormalized)
 		fmt.Println("Trie: ", hopCountTrie)
-		fmt.Println("Difference: ", hopCountNormalized-hopCountTrie)
-		differences = append(differences, hopCountNormalized-hopCountTrie)
-		hopCounts = append(hopCounts, hopCountTrie)
-	}
-	// compute sum of differences
-	sum_diff := 0
-	for _, diff := range differences {
-		sum_diff += diff
-	}
-	sum_hops := 0
-	for _, hop := range hopCounts {
-		sum_hops += hop
-	}
-	fmt.Println("Differences average: ", sum_diff/len(differences), " max: ", slices.Max(differences), "sum: ", sum_diff)
-	fmt.Println("HopCounts average: ", sum_hops/len(hopCounts), " max: ", slices.Max(hopCounts))
+		fmt.Println("Difference: ", difference)
 
+		hopCountThisIter := hopCount{TrieHops: hopCountTrie, NormalizedHops: hopCountNormalized}
+		if _, ok := hopCountFrequencies[hopCountThisIter]; ok {
+			hopCountFrequencies[hopCountThisIter]++
+		} else {
+			hopCountFrequencies[hopCountThisIter] = 1
+		}
+	}
+
+	keys := maps.Keys(hopCountFrequencies)
+	slices.SortFunc(keys, func(i, j hopCount) int {
+		iDifference := i.NormalizedHops - i.TrieHops
+		jDifference := j.NormalizedHops - j.TrieHops
+		if iDifference < jDifference {
+			return -1
+		} else if iDifference > jDifference {
+			return 1
+		} else {
+			if i.TrieHops < j.TrieHops {
+				return -1
+			} else if i.TrieHops == j.TrieHops {
+				return 0
+			} else {
+				return 1
+			}
+		}
+	})
+
+	fmt.Println("Stats over ", N, " runs: --------------------------------------------")
+	for _, key := range keys {
+		frequency := hopCountFrequencies[key]
+		fmt.Println("TrieHops: ", key.TrieHops, "NormalizedHops: ", key.NormalizedHops, "Difference: ", key.NormalizedHops-key.TrieHops, "Number of times: ", frequency)
+	}
 }
 
 func doLookupSimplified(nodes []*nettest.PeerWithTwoRTs, nodeIDs []kadt.PeerID, target kadt.PeerID, client kadt.PeerID, runNormalized bool) (int, error) {
