@@ -158,6 +158,11 @@ func (r *results) Server_PIR(b *testing.B, log2_number_of_rows int, mode string,
 	var server_PIR_Protocol PIR_Protocol
 	if mode == RLWE_All_Keys || mode == RLWE_Whispir_3_Keys || mode == RLWE_Whispir_2_Keys {
 		server_PIR_Protocol = NewSimpleRLWE_PIR_Protocol_mode(log2_number_of_rows, mode)
+		// start := time.Now()
+		err := server_PIR_Protocol.TransformDBToPlaintextForm(db)
+		require.NoError(b, err)
+		// duration := time.Since(start)
+		// fmt.Println("- time elapsed for transformDBToPlaintextForm (ms) is: \t\t\t", duration.Milliseconds())
 	} else { // mode == Basic_Paillier
 		server_PIR_Protocol = NewBasicPaillier_PIR_Protocol(log2_number_of_rows)
 	}
