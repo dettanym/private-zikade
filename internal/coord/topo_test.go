@@ -3,6 +3,7 @@ package coord
 import (
 	"fmt"
 	"golang.org/x/exp/maps"
+	"math"
 	"sort"
 	"testing"
 
@@ -16,10 +17,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRoutingNormVsTrie(t *testing.T) {
+type WhichRoutingTable int64
+
+const (
+	// Now, the index starts from 1
+	UseSimpleRT WhichRoutingTable = iota + 1
+	UseTrieRT
+	UseNormalizedRT
+)
+
+func TestRoutingNormVsTrieVsSimple(t *testing.T) {
 	N := 5000
+	bucketsize := 10
+
 	clk := clock.NewMock()
-	_, nodesWithTwoRTs, err := nettest.GenerateCrawledTopology(clk)
+	_, nodesWithTwoRTs, err := nettest.GenerateCrawledTopology(clk, bucketsize)
 	require.NoError(t, err)
 
 	clientPeerID := nodesWithTwoRTs[0].NodeID
@@ -40,6 +52,7 @@ func TestRoutingNormVsTrie(t *testing.T) {
 	type hopCount struct {
 		NormalizedHops int
 		TrieHops       int
+		SimpleRTHops   int
 	}
 	var hopCountFrequencies = map[hopCount]int{}
 	for i := 0; i < N; i++ {
@@ -55,18 +68,22 @@ func TestRoutingNormVsTrie(t *testing.T) {
 		target := nodesWithTwoRTs[targetIndex].NodeID
 		fmt.Println("target: ", target.String())
 
-		hopCountTrie, err := doLookupSimplified(nodesWithTwoRTs, nodeIDs, target, clientPeerID, false)
+		hopCountSimpleRt, err := doLookupSimplified(nodesWithTwoRTs, nodeIDs, target, clientPeerID, bucketsize, UseSimpleRT)
 		require.NoError(t, err)
 
-		hopCountNormalized, err := doLookupSimplified(nodesWithTwoRTs, nodeIDs, target, clientPeerID, true)
+		hopCountTrie, err := doLookupSimplified(nodesWithTwoRTs, nodeIDs, target, clientPeerID, bucketsize, UseTrieRT)
+		require.NoError(t, err)
+
+		hopCountNormalized, err := doLookupSimplified(nodesWithTwoRTs, nodeIDs, target, clientPeerID, bucketsize, UseNormalizedRT)
 		require.NoError(t, err)
 		difference := hopCountNormalized - hopCountTrie
 		// print difference in hop count
 		fmt.Println("Norm: ", hopCountNormalized)
 		fmt.Println("Trie: ", hopCountTrie)
+		fmt.Println("Simple: ", hopCountSimpleRt)
 		fmt.Println("Difference: ", difference)
 
-		hopCountThisIter := hopCount{TrieHops: hopCountTrie, NormalizedHops: hopCountNormalized}
+		hopCountThisIter := hopCount{TrieHops: hopCountTrie, NormalizedHops: hopCountNormalized, SimpleRTHops: hopCountSimpleRt}
 		if _, ok := hopCountFrequencies[hopCountThisIter]; ok {
 			hopCountFrequencies[hopCountThisIter]++
 		} else {
@@ -100,12 +117,12 @@ func TestRoutingNormVsTrie(t *testing.T) {
 	}
 }
 
-func doLookupSimplified(nodes []*nettest.PeerWithTwoRTs, nodeIDs []kadt.PeerID, target kadt.PeerID, client kadt.PeerID, runNormalized bool) (int, error) {
-	bucketsize := 10
+func doLookupSimplified(nodes []*nettest.PeerWithMultipleRTs, nodeIDs []kadt.PeerID, target kadt.PeerID, client kadt.PeerID, bucketsize int, useRT WhichRoutingTable) (int, error) {
 	var seeds []kadt.PeerID
 	var nearestNodes []kadt.PeerID
 	hopCount := 0
 	peersVisited := 0
+	hopLimit := int(math.Ceil(float64(len(nodes)) / float64(bucketsize)))
 
 	// initialize seeds with results of running rt.NearestNodes on the client
 	//  note the client continues to use NearestNodes, instead of NearestNodesAsServer
@@ -113,10 +130,14 @@ func doLookupSimplified(nodes []*nettest.PeerWithTwoRTs, nodeIDs []kadt.PeerID, 
 	if index == -1 {
 		return 0, fmt.Errorf("could not find one of the peers returned by a server in the global list of nodeIDs")
 	}
-	if runNormalized {
-		seeds = nodes[index].NormalizedRoutingTable.NearestNodes(target.Key(), bucketsize)
-	} else {
+	// query nearestnodes initially on own rt
+	switch useRT {
+	case UseTrieRT:
 		seeds = nodes[index].TrieRoutingTable.NearestNodes(target.Key(), bucketsize)
+	case UseSimpleRT:
+		seeds = nodes[index].SimpleRoutingTable.NearestNodes(target.Key(), bucketsize)
+	case UseNormalizedRT:
+		seeds = nodes[index].NormalizedRoutingTable.NearestNodesAsServer(target.Key(), client.Key())
 	}
 
 	var seedsNextRound []kadt.PeerID
@@ -168,10 +189,13 @@ func doLookupSimplified(nodes []*nettest.PeerWithTwoRTs, nodeIDs []kadt.PeerID, 
 			}
 
 			// query nearestnodes on those rts
-			if runNormalized {
-				nearestNodes = nodes[index].NormalizedRoutingTable.NearestNodesAsServer(target.Key(), client.Key())
-			} else {
+			switch useRT {
+			case UseTrieRT:
 				nearestNodes = nodes[index].TrieRoutingTable.NearestNodes(target.Key(), bucketsize)
+			case UseSimpleRT:
+				nearestNodes = nodes[index].SimpleRoutingTable.NearestNodes(target.Key(), bucketsize)
+			case UseNormalizedRT:
+				nearestNodes = nodes[index].NormalizedRoutingTable.NearestNodesAsServer(target.Key(), client.Key())
 			}
 			if len(nearestNodes) < bucketsize {
 				fmt.Println("warning: only", len(nearestNodes), " nodes returned from rt at index,  ", index)
@@ -203,7 +227,7 @@ func doLookupSimplified(nodes []*nettest.PeerWithTwoRTs, nodeIDs []kadt.PeerID, 
 		seeds = seedsNextRound
 
 		hopCount++
-		if hopCount > 50 {
+		if hopCount > hopLimit {
 			fmt.Println("Error: hopCount > 50, node not found, current node:", index, nodes[index].NodeID.String())
 			hopCount = -1
 			break
