@@ -12,6 +12,7 @@ import (
 
 	"github.com/benbjohnson/clock"
 	"github.com/plprobelab/go-kademlia/routing/normalizedrt"
+	"github.com/plprobelab/go-kademlia/routing/simplert"
 	"github.com/plprobelab/go-libdht/kad/triert"
 
 	"github.com/plprobelab/zikade/kadt"
@@ -74,15 +75,15 @@ type Neighbour_Data struct {
 	Errors     string   `json:"ErrorBits,omitempty"`
 }
 
-type PeerWithTwoRTs struct {
+type PeerWithMultipleRTs struct {
 	NodeID                 kadt.PeerID
 	Router                 *Router
 	TrieRoutingTable       routing.RoutingTableCpl[kadt.Key, kadt.PeerID]
 	NormalizedRoutingTable routing.RoutingTableCplNormalized[kadt.Key, kadt.PeerID]
+	SimpleRoutingTable     routing.RoutingTableCpl[kadt.Key, kadt.PeerID]
 }
 
-func GenerateCrawledTopology(clk clock.Clock) (*Topology, []*PeerWithTwoRTs, error) {
-	bucketsize := 10
+func GenerateCrawledTopology(clk clock.Clock, bucketsize int) (*Topology, []*PeerWithMultipleRTs, error) {
 	// this function will define the topology w.r.t how peers are distributed from the crawled data
 	// read json file in nettest
 	pwd, _ := os.Getwd()
@@ -101,7 +102,7 @@ func GenerateCrawledTopology(clk clock.Clock) (*Topology, []*PeerWithTwoRTs, err
 	fmt.Println("Number of nodes: ", len(neighbours))
 	fmt.Println(neighbours[0].PeerID)
 
-	nodes := make([]*PeerWithTwoRTs, len(neighbours))
+	nodes := make([]*PeerWithMultipleRTs, len(neighbours))
 	top := NewTopology(clk)
 	nodeIDs := make([]string, len(neighbours))
 	// loop through neighbours array
@@ -119,11 +120,14 @@ func GenerateCrawledTopology(clk clock.Clock) (*Topology, []*PeerWithTwoRTs, err
 		if err != nil {
 			return nil, nil, err
 		}
-		nodes[i] = &PeerWithTwoRTs{
+		simpleRoutingTable := simplert.New[kadt.Key, kadt.PeerID](id, bucketsize)
+
+		nodes[i] = &PeerWithMultipleRTs{
 			NodeID:                 id,
 			Router:                 NewRouter(id, top),
 			TrieRoutingTable:       trieRoutingTable,
 			NormalizedRoutingTable: normalizedrt.New[kadt.Key, kadt.PeerID](id, bucketsize),
+			SimpleRoutingTable:     simpleRoutingTable,
 		}
 	}
 
