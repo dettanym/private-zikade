@@ -226,7 +226,7 @@ func Benchmark_PIR_for_Provider_Routing(b *testing.B) {
 	// ensures that all CPUs are used
 	fmt.Println(runtime.GOMAXPROCS(runtime.NumCPU()))
 
-	runs := 10 // b.N
+	runs := 1 // b.N
 
 	// These numbers are derived using the script
 	maxBinLoadRLWE := map[int]int{
@@ -282,7 +282,7 @@ func Benchmark_PIR_for_Provider_Routing(b *testing.B) {
 		196608: 933,
 	}
 
-	modes := []string{RLWE_All_Keys, RLWE_Whispir_2_Keys, RLWE_Whispir_3_Keys} // Basic_Paillier
+	modes := []string{Basic_Paillier}
 	experimentName := "providerRouting-"
 	resultFiles := createResultsFiles(b, experimentName, modes)
 
