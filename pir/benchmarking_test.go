@@ -294,17 +294,18 @@ func Benchmark_PIR_for_Provider_Routing(b *testing.B) {
 
 	for num_cids := cidsMin; num_cids < cidsMax; num_cids += cidsStep {
 
-		log_2_db_rows := 12
-
 		for i, mode := range modes {
 			fmt.Println("---- mode: ", mode)
 			fmt.Println("- num_cids: ", num_cids)
 
 			var row_size int
+			var log_2_db_rows int
 			if mode == Basic_Paillier {
 				row_size = multiaddress_size_in_bytes * (maxBinLoadPaillier[num_cids] + 2)
+				log_2_db_rows = 8
 			} else {
 				row_size = multiaddress_size_in_bytes * (maxBinLoadRLWE[num_cids] + 2) // Adding 2, just to be safe
+				log_2_db_rows = 12
 			}
 
 			fmt.Println("- RowSize: ", row_size)
